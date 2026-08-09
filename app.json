@@ -34,7 +34,12 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow LetsLearnLanguages to use your microphone so you can speak your English translations."
+        }
+      ],
       "expo-sqlite",
       "expo-secure-store",
       "expo-asset"

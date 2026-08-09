@@ -7,6 +7,8 @@ import '../global.css';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { DatabaseProvider } from '@/providers/DatabaseProvider';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -46,15 +48,23 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
+
+  // Pull API keys out of SecureStore / env before any service reads them.
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   return (
     <DatabaseProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
-      </ThemeProvider>
+      <QueryProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </Stack>
+        </ThemeProvider>
+      </QueryProvider>
     </DatabaseProvider>
   );
 }
