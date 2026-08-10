@@ -29,10 +29,11 @@ const dailySentenceSchema: Schema = {
 };
 
 /**
- * Ask Gemini for three sentences and append them to the given date.
- * `avoid` keeps a refresh from handing back sentences the user already has.
+ * Ask Gemini for three sentences for `date`.
+ * `avoid` keeps a refresh from handing back sentences the user already saw.
+ * When `replace` is set the day's existing sentences are swapped out entirely.
  */
-async function generateAndSave(date: string, avoid: string[]) {
+async function generateAndSave(date: string, avoid: string[], replace = false) {
   const apiKey = requireGeminiApiKey();
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -75,7 +76,11 @@ async function generateAndSave(date: string, avoid: string[]) {
     dateAssigned: date,
   }));
 
-  await sentenceRepository.createMany(sentences);
+  if (replace) {
+    await sentenceRepository.replaceForDate(date, sentences);
+  } else {
+    await sentenceRepository.createMany(sentences);
+  }
 
   return sentenceRepository.getByDate(date);
 }
@@ -96,13 +101,14 @@ export async function getOrCreateDailySentences(date: string) {
 }
 
 /**
- * Add three more sentences to a day the user has already been given sentences for.
- * Nothing is deleted — earlier sentences (and their viewed state) stay put.
+ * Swap today's sentences for a brand new set of three.
+ * Past translations survive — only the daily list is cleared.
  */
-export async function generateMoreDailySentences(date: string) {
+export async function refreshDailySentences(date: string) {
   const existing = await sentenceRepository.getByDate(date);
   return generateAndSave(
     date,
-    existing.map((sentence) => sentence.koreanText)
+    existing.map((sentence) => sentence.koreanText),
+    true
   );
 }

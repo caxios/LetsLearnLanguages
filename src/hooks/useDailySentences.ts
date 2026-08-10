@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { sentenceRepository } from '@/db/repositories/sentenceRepository';
-import { generateMoreDailySentences, getOrCreateDailySentences } from '@/services/dailySentences';
+import { getOrCreateDailySentences, refreshDailySentences } from '@/services/dailySentences';
 
 export function todayKey() {
   return format(new Date(), 'yyyy-MM-dd');
@@ -18,12 +18,12 @@ export function useDailySentences() {
   });
 }
 
-/** Generate three additional sentences for today, keeping the existing ones. */
+/** Replace today's sentences with a freshly generated set of three. */
 export function useRefreshDailySentences() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => generateMoreDailySentences(todayKey()),
+    mutationFn: () => refreshDailySentences(todayKey()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailySentences'] });
     },

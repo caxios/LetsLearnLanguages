@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
+import { ReviewAttemptPanel, formatAttemptDate } from '@/components/evaluation/ReviewAttemptPanel';
 import { RecommendationList } from '@/components/evaluation/RecommendationList';
 import { ScoreCard } from '@/components/evaluation/ScoreCard';
 import { Card } from '@/components/ui/Card';
@@ -113,13 +114,21 @@ function ReviewFlashcard({
         </Card>
       </Pressable>
 
-      {revealed && <ReviewEvaluationDetail evaluationId={card.evaluationId} />}
+      {revealed && (
+        <ReviewEvaluationDetail evaluationId={card.evaluationId} card={card} />
+      )}
     </View>
   );
 }
 
-/** Replays the original evaluation — scores, feedback and every recommendation. */
-function ReviewEvaluationDetail({ evaluationId }: { evaluationId: number }) {
+/** Replays the original evaluation and offers a fresh, score-only re-attempt. */
+function ReviewEvaluationDetail({
+  evaluationId,
+  card,
+}: {
+  evaluationId: number;
+  card: ReviewCardRow;
+}) {
   const result = useEvaluationResult(evaluationId);
 
   if (result.isLoading) {
@@ -149,9 +158,14 @@ function ReviewEvaluationDetail({ evaluationId }: { evaluationId: number }) {
       />
 
       <Card variant="outlined">
-        <Text style={styles.detailLabel}>그때 나의 번역</Text>
+        <View style={styles.detailHeader}>
+          <Text style={styles.detailLabel}>나의 번역</Text>
+          <Text style={styles.detailDate}>{formatAttemptDate(evaluation.input.createdAt)}</Text>
+        </View>
         <Text style={styles.detailBody}>{evaluation.input.englishInput}</Text>
       </Card>
+
+      <ReviewAttemptPanel reviewCardId={card.id} koreanText={card.koreanText} />
 
       <FeedbackPanel feedback={evaluation.feedback} />
 
@@ -235,6 +249,16 @@ const styles = StyleSheet.create({
   detailLoading: {
     paddingVertical: Spacing.lg,
     alignItems: 'center',
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  detailDate: {
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.xs,
+    color: Colors.textMuted,
   },
   detailLabel: {
     fontFamily: Fonts.bodyMedium,

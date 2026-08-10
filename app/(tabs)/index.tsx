@@ -5,6 +5,7 @@ import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DailySentenceList } from '@/components/daily/DailySentenceList';
+import { StreakBadge } from '@/components/daily/StreakBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
@@ -15,6 +16,7 @@ import {
   useMarkSentenceViewed,
   useRefreshDailySentences,
 } from '@/hooks/useDailySentences';
+import { useRecordVisit } from '@/hooks/useRecordVisit';
 import { useStats } from '@/hooks/useStats';
 import { useInputStore } from '@/stores/useInputStore';
 
@@ -24,6 +26,9 @@ export default function HomeScreen() {
   const stats = useStats();
   const markViewed = useMarkSentenceViewed();
   const refreshSentences = useRefreshDailySentences();
+
+  // Opening the app counts towards the attendance streak.
+  useRecordVisit();
 
   const setKoreanText = useInputStore((s) => s.setKoreanText);
   const setDailySentenceId = useInputStore((s) => s.setDailySentenceId);
@@ -60,14 +65,17 @@ export default function HomeScreen() {
         />
       }
     >
-      <View style={styles.header}>
-        <Text style={styles.date}>📅 {today}</Text>
-        {stats.isLoading ? (
-          <Skeleton height={18} width={140} />
-        ) : (
-          <Text style={styles.streak}>🔥 {stats.data?.streak ?? 0}일 연속 학습 중</Text>
-        )}
-      </View>
+      <Text style={styles.date}>📅 {today}</Text>
+
+      {stats.isLoading ? (
+        <Skeleton height={128} borderRadius={16} />
+      ) : (
+        <StreakBadge
+          streak={stats.data?.streak ?? 0}
+          activeDates={stats.data?.activeDates ?? []}
+          today={stats.data?.today ?? format(new Date(), 'yyyy-MM-dd')}
+        />
+      )}
 
       <View style={styles.sectionHeader}>
         <View>
@@ -81,7 +89,7 @@ export default function HomeScreen() {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="새로운 문장 3개 받기"
+          accessibilityLabel="새로운 문장 3개로 바꾸기"
           accessibilityState={{ busy: refreshSentences.isPending }}
           disabled={refreshSentences.isPending}
           onPress={() => refreshSentences.mutate()}
@@ -97,7 +105,7 @@ export default function HomeScreen() {
             />
           )}
           <Text style={styles.refreshLabel}>
-            {refreshSentences.isPending ? '생성 중…' : '문장 더 받기'}
+            {refreshSentences.isPending ? '생성 중…' : '새 문장 받기'}
           </Text>
         </Pressable>
       </View>
@@ -142,18 +150,10 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing['3xl'],
     gap: Spacing.base,
   },
-  header: {
-    gap: Spacing.xs,
-  },
   date: {
     fontFamily: Fonts.bodyMedium,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
-  },
-  streak: {
-    fontFamily: Fonts.headingSemiBold,
-    fontSize: FontSizes.base,
-    color: Colors.textPrimary,
   },
   sectionHeader: {
     flexDirection: 'row',

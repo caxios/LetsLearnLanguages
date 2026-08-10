@@ -6,9 +6,14 @@ import {
   type Schema,
 } from '@google/generative-ai';
 
-import { EVALUATION_SYSTEM_PROMPT } from '@/constants/prompts';
+import { EVALUATION_SYSTEM_PROMPT, REVIEW_SCORING_SYSTEM_PROMPT } from '@/constants/prompts';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { evaluationResponseSchema, type EvaluationResponse } from '@/types/evaluation';
+import {
+  evaluationResponseSchema,
+  scoreOnlyResponseSchema,
+  type EvaluationResponse,
+  type ScoreOnlyResponse,
+} from '@/types/evaluation';
 import { ApiKeyMissingError, ApiResponseError, ValidationError, withRetry } from '@/utils/errors';
 
 export const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -157,6 +162,86 @@ Please evaluate this translation and provide recommended alternatives.
       console.error('Zod validation errors:', validated.error.issues);
       throw new ValidationError(
         `Gemini evaluation response — ${validated.error.issues
+          .map((issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`)
+          .join(', ')}`
+      );
+    }
+
+    return validated.data;
+  });
+}
+
+// --- Lightweight review scoring -------------------------------------------
+
+const scoreOnlySchema: Schema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    naturalness_score: {
+      type: SchemaType.INTEGER,
+      description: 'Score for how natural the English sounds (0-100)',
+    },
+    grammar_score: {
+      type: SchemaType.INTEGER,
+      description: 'Score for grammatical correctness (0-100)',
+    },
+    meaning_clarity_score: {
+      type: SchemaType.INTEGER,
+      description: 'Score for how clearly the meaning is conveyed (0-100)',
+    },
+  },
+  required: ['naturalness_score', 'grammar_score', 'meaning_clarity_score'],
+};
+
+let _scoreModel: GenerativeModel | null = null;
+let _scoreModelApiKey: string | null = null;
+
+function getScoreModel(): GenerativeModel {
+  const apiKey = requireGeminiApiKey();
+
+  if (_scoreModel && _scoreModelApiKey === apiKey) {
+    return _scoreModel;
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  _scoreModel = genAI.getGenerativeModel({
+    model: GEMINI_MODEL,
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: scoreOnlySchema,
+      // Low temperature: the same translation should score the same way twice.
+      temperature: 0.2,
+    },
+    systemInstruction: REVIEW_SCORING_SYSTEM_PROMPT,
+  });
+  _scoreModelApiKey = apiKey;
+
+  return _scoreModel;
+}
+
+/**
+ * Score a review re-attempt. Deliberately returns only the three numbers —
+ * no feedback, nuance notes or recommended sentences.
+ */
+export async function scoreOnly(input: {
+  koreanText: string;
+  englishText: string;
+}): Promise<ScoreOnlyResponse> {
+  const model = getScoreModel();
+
+  const prompt = `
+Korean sentence (원문): "${input.koreanText}"
+User's English translation (사용자 번역): "${input.englishText}"
+
+Score this translation. Return only the three scores.
+  `.trim();
+
+  return withRetry(async () => {
+    const jsonResponse = await generateJson(model, prompt);
+
+    const validated = scoreOnlyResponseSchema.safeParse(jsonResponse);
+    if (!validated.success) {
+      throw new ValidationError(
+        `Gemini review score response — ${validated.error.issues
           .map((issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`)
           .join(', ')}`
       );

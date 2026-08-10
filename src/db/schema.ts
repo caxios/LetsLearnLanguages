@@ -69,6 +69,31 @@ export const reviewCards = sqliteTable('review_cards', {
     .default(sql`(datetime('now'))`),
 });
 
+/** One row per calendar day the user opened the app — powers the attendance streak. */
+export const appVisits = sqliteTable('app_visits', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  visitDate: text('visit_date').notNull().unique(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** A re-attempt at a bookmarked card. Scores only — no feedback is generated. */
+export const reviewAttempts = sqliteTable('review_attempts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  reviewCardId: integer('review_card_id')
+    .notNull()
+    .references(() => reviewCards.id),
+  englishInput: text('english_input').notNull(),
+  naturalnessScore: integer('naturalness_score').notNull(),
+  grammarScore: integer('grammar_score').notNull(),
+  meaningClarityScore: integer('meaning_clarity_score').notNull(),
+  overallScore: integer('overall_score').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export type DailySentence = typeof dailySentences.$inferSelect;
 export type NewDailySentence = typeof dailySentences.$inferInsert;
 export type UserInput = typeof userInputs.$inferSelect;
@@ -79,3 +104,6 @@ export type Recommendation = typeof recommendations.$inferSelect;
 export type NewRecommendation = typeof recommendations.$inferInsert;
 export type ReviewCard = typeof reviewCards.$inferSelect;
 export type NewReviewCard = typeof reviewCards.$inferInsert;
+export type AppVisit = typeof appVisits.$inferSelect;
+export type ReviewAttempt = typeof reviewAttempts.$inferSelect;
+export type NewReviewAttempt = typeof reviewAttempts.$inferInsert;

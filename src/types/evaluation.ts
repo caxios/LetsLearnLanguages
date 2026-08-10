@@ -19,8 +19,16 @@ export const evaluationResponseSchema = z.object({
   recommendations: z.array(recommendationSchema).min(1).max(5),
 });
 
+/** Review re-attempts are scored only — no feedback or recommendations. */
+export const scoreOnlyResponseSchema = z.object({
+  naturalness_score: z.number().int().min(0).max(100),
+  grammar_score: z.number().int().min(0).max(100),
+  meaning_clarity_score: z.number().int().min(0).max(100),
+});
+
 // --- TypeScript Types (derived from Zod) ---
 
 export type EvaluationResponse = z.infer<typeof evaluationResponseSchema>;
 export type Recommendation = z.infer<typeof recommendationSchema>;
 export type EvaluationScores = EvaluationResponse['evaluation'];
+export type ScoreOnlyResponse = z.infer<typeof scoreOnlyResponseSchema>;

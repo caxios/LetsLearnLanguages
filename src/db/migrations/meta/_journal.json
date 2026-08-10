@@ -15,6 +15,13 @@
       "when": 1786335022169,
       "tag": "0001_amused_mister_fear",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786346014705,
+      "tag": "0002_flowery_shadow_king",
+      "breakpoints": true
     }
   ]
 }
