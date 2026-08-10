@@ -139,12 +139,11 @@ export default function HomeScreen() {
       <View style={styles.divider} />
 
       {stats.isLoading ? (
-        <Skeleton height={160} borderRadius={16} />
+        <Skeleton height={140} borderRadius={16} />
       ) : (
         <StatsPanel
           uniqueSentences={stats.data?.uniqueSentences ?? 0}
           totalReviews={stats.data?.totalReviews ?? 0}
-          averageScore={stats.data?.averageScore ?? 0}
         />
       )}
     </ScrollView>

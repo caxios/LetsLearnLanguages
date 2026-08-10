@@ -1,31 +1,19 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { ProgressBar } from '@/components/ui/ProgressBar';
-import { Colors, scoreColor } from '@/constants/colors';
+import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { BorderRadius, Spacing } from '@/constants/layout';
-
-/** Goalposts close enough to feel reachable, spaced out as the habit sticks. */
-const MILESTONES = [5, 10, 25, 50, 100, 200, 500, 1000];
-
-export function nextMilestone(value: number): number {
-  const next = MILESTONES.find((milestone) => milestone > value);
-  // Past the ladder, keep rolling in thousands.
-  return next ?? (Math.floor(value / 1000) + 1) * 1000;
-}
 
 interface StatsPanelProps {
   /** Distinct Korean sentences the user has translated. */
   uniqueSentences: number;
   /** Review re-attempts completed across the whole deck. */
   totalReviews: number;
-  /** Mean overall score, 0-100. */
-  averageScore: number;
 }
 
-/** Progress widget on the home screen: what has been done, and what's next. */
-export function StatsPanel({ uniqueSentences, totalReviews, averageScore }: StatsPanelProps) {
+/** Progress widget on the home screen: two plain counters, no goalposts. */
+export function StatsPanel({ uniqueSentences, totalReviews }: StatsPanelProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>📊 나의 기록</Text>
@@ -46,16 +34,6 @@ export function StatsPanel({ uniqueSentences, totalReviews, averageScore }: Stat
           color={Colors.secondary}
         />
       </View>
-
-      <View style={styles.average}>
-        <View style={styles.averageHeader}>
-          <Text style={styles.averageLabel}>평균 점수</Text>
-          <Text style={[styles.averageValue, { color: scoreColor(averageScore) }]}>
-            {averageScore}점
-          </Text>
-        </View>
-        <ProgressBar progress={averageScore / 100} color={scoreColor(averageScore)} height={10} />
-      </View>
     </View>
   );
 }
@@ -73,25 +51,18 @@ function MetricCard({
   unit: string;
   color: string;
 }) {
-  const target = nextMilestone(value);
-
   return (
     <View style={styles.metric} accessibilityLabel={`${label} ${value}${unit}`}>
-      <View style={styles.metricHeader}>
-        <Text style={styles.metricIcon}>{icon}</Text>
-        <Text style={styles.metricLabel}>{label}</Text>
+      <View style={[styles.iconWrap, { borderColor: color }]}>
+        <Text style={styles.icon}>{icon}</Text>
       </View>
 
-      <View style={styles.metricValueRow}>
-        <Text style={[styles.metricValue, { color }]}>{value}</Text>
-        <Text style={styles.metricUnit}>{unit}</Text>
-      </View>
+      <Text style={styles.label}>{label}</Text>
 
-      <ProgressBar progress={value / target} color={color} height={6} />
-      <Text style={styles.metricTarget}>
-        다음 목표 {target}
-        {unit}
-      </Text>
+      <View style={styles.valueRow}>
+        <Text style={[styles.value, { color }]}>{value}</Text>
+        <Text style={styles.unit}>{unit}</Text>
+      </View>
     </View>
   );
 }
@@ -111,65 +82,44 @@ const styles = StyleSheet.create({
   },
   metric: {
     flex: 1,
+    alignItems: 'center',
     gap: Spacing.sm,
-    padding: Spacing.base,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.base,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
-  metricHeader: {
-    flexDirection: 'row',
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
-    gap: Spacing.xs,
+    justifyContent: 'center',
   },
-  metricIcon: {
-    fontSize: FontSizes.sm,
+  icon: {
+    fontSize: FontSizes.base,
   },
-  metricLabel: {
+  label: {
     fontFamily: Fonts.bodyMedium,
     fontSize: FontSizes.xs,
     color: Colors.textSecondary,
   },
-  metricValueRow: {
+  valueRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: Spacing.xs,
   },
-  metricValue: {
+  value: {
     fontFamily: Fonts.mono,
-    fontSize: FontSizes['2xl'],
+    fontSize: FontSizes['3xl'],
   },
-  metricUnit: {
+  unit: {
     fontFamily: Fonts.body,
     fontSize: FontSizes.xs,
     color: Colors.textMuted,
-  },
-  metricTarget: {
-    fontFamily: Fonts.body,
-    fontSize: 10,
-    color: Colors.textMuted,
-  },
-  average: {
-    gap: Spacing.sm,
-    padding: Spacing.base,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  averageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  averageLabel: {
-    fontFamily: Fonts.bodyMedium,
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-  },
-  averageValue: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSizes.lg,
   },
 });
