@@ -14,6 +14,11 @@ IMPORTANT RULES:
 - Each recommendation must include:
   - The English sentence itself
   - Context and nuance explanation (when/where to use it, in Korean)
+  - A natural Korean translation of that English sentence which preserves its specific
+    nuance and tone. This is NOT a literal word-for-word translation: render the sentence
+    the way a Korean speaker would actually say it to convey the same feeling, formality
+    and warmth. Two recommendations with different nuances must get visibly different
+    Korean translations.
   - Grammar explanation (why this grammar is correct, in Korean)
 - Be encouraging but honest. Don't inflate scores.
 - Focus on real-life, conversational English — NOT textbook English.

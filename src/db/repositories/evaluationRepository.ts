@@ -23,6 +23,7 @@ export const evaluationRepository = {
     recommendations: {
       sentence: string;
       contextAndNuance: string;
+      koreanTranslation: string;
       grammarExplanation: string;
     }[];
   }) {
@@ -68,6 +69,7 @@ export const evaluationRepository = {
               evaluationId: evaluation.id,
               sentence: rec.sentence,
               contextAndNuance: rec.contextAndNuance,
+              koreanTranslation: rec.koreanTranslation,
               grammarExplanation: rec.grammarExplanation,
             }))
           )

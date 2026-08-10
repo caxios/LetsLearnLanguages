@@ -1,0 +1,1 @@
+ALTER TABLE `recommendations` ADD `korean_translation` text;

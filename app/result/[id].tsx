@@ -81,6 +81,7 @@ export default function ResultScreen() {
           recommendations={evaluation.recommendations.map((rec) => ({
             sentence: rec.sentence,
             contextAndNuance: rec.contextAndNuance,
+            koreanTranslation: rec.koreanTranslation,
             grammarExplanation: rec.grammarExplanation,
           }))}
         />

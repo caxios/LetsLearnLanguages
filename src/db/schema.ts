@@ -47,6 +47,9 @@ export const recommendations = sqliteTable('recommendations', {
     .references(() => evaluations.id),
   sentence: text('sentence').notNull(),
   contextAndNuance: text('context_and_nuance').notNull(),
+  // Nuance-preserving Korean rendering of `sentence`. Nullable: rows written
+  // before this column existed have no translation to backfill.
+  koreanTranslation: text('korean_translation'),
   grammarExplanation: text('grammar_explanation').notNull(),
 });
 

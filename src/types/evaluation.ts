@@ -5,6 +5,7 @@ import { z } from 'zod';
 export const recommendationSchema = z.object({
   sentence: z.string().min(1),
   context_and_nuance: z.string().min(1),
+  korean_translation: z.string().min(1),
   grammar_explanation: z.string().min(1),
 });
 

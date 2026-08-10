@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
@@ -25,7 +25,7 @@ export function FeedbackPanel({ feedback }: FeedbackPanelProps) {
 
   return (
     <Animated.View style={{ opacity }}>
-      <Text style={styles.heading}>📝 AI 피드백</Text>
+      <Text style={styles.heading}>📝 선생님 피드백</Text>
       <Card>
         <Text style={styles.body}>{feedback}</Text>
       </Card>

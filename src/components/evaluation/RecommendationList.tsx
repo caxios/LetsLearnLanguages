@@ -15,12 +15,16 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 interface RecommendationItem {
   sentence: string;
   contextAndNuance: string;
+  /** Nuance-preserving Korean rendering. Absent on rows saved before this field existed. */
+  koreanTranslation?: string | null;
   grammarExplanation: string;
 }
 
 interface RecommendationListProps {
   recommendations: RecommendationItem[];
 }
+
+type SectionKey = 'nuance' | 'translation' | 'grammar';
 
 const STAGGER_MS = 100;
 
@@ -46,7 +50,12 @@ function RecommendationCard({
   recommendation: RecommendationItem;
   delay: number;
 }) {
-  const [openSection, setOpenSection] = useState<'nuance' | 'grammar' | null>(null);
+  // Sections open independently so nuance, translation and grammar can be read together.
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
+    nuance: false,
+    translation: false,
+    grammar: false,
+  });
   const [copied, setCopied] = useState(false);
 
   const enter = useRef(new Animated.Value(0)).current;
@@ -63,9 +72,9 @@ function RecommendationCard({
     return () => animation.stop();
   }, [delay, enter]);
 
-  const toggle = (section: 'nuance' | 'grammar') => {
+  const toggle = (section: SectionKey) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpenSection((current) => (current === section ? null : section));
+    setOpenSections((current) => ({ ...current, [section]: !current[section] }));
   };
 
   const handleCopy = async () => {
@@ -100,13 +109,24 @@ function RecommendationCard({
         <Section
           title="뉘앙스 설명"
           body={recommendation.contextAndNuance}
-          expanded={openSection === 'nuance'}
+          expanded={openSections.nuance}
           onToggle={() => toggle('nuance')}
         />
+
+        {recommendation.koreanTranslation ? (
+          <Section
+            title="한국어 번역"
+            body={recommendation.koreanTranslation}
+            bodyStyle={styles.translationBody}
+            expanded={openSections.translation}
+            onToggle={() => toggle('translation')}
+          />
+        ) : null}
+
         <Section
           title="문법 설명"
           body={recommendation.grammarExplanation}
-          expanded={openSection === 'grammar'}
+          expanded={openSections.grammar}
           onToggle={() => toggle('grammar')}
         />
       </Card>
@@ -119,11 +139,13 @@ function Section({
   body,
   expanded,
   onToggle,
+  bodyStyle,
 }: {
   title: string;
   body: string;
   expanded: boolean;
   onToggle: () => void;
+  bodyStyle?: object;
 }) {
   return (
     <View style={styles.section}>
@@ -139,7 +161,7 @@ function Section({
         </Text>
       </Pressable>
 
-      {expanded && <Text style={styles.sectionBody}>{body}</Text>}
+      {expanded && <Text style={[styles.sectionBody, bodyStyle]}>{body}</Text>}
     </View>
   );
 }
@@ -191,5 +213,11 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     lineHeight: FontSizes.sm * 1.6,
     color: Colors.textSecondary,
+  },
+  translationBody: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: FontSizes.base,
+    lineHeight: FontSizes.base * 1.6,
+    color: Colors.textPrimary,
   },
 });

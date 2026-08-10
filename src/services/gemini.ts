@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { evaluationResponseSchema, type EvaluationResponse } from '@/types/evaluation';
 import { ApiKeyMissingError, ApiResponseError, ValidationError, withRetry } from '@/utils/errors';
 
-export const GEMINI_MODEL = 'gemini-2.0-flash';
+export const GEMINI_MODEL = 'gemini-2.5-flash';
 
 // Gemini response schema (enforces structured JSON output)
 const evaluationSchema: Schema = {
@@ -52,12 +52,22 @@ const evaluationSchema: Schema = {
             type: SchemaType.STRING,
             description: 'Context and nuance explanation in Korean',
           },
+          korean_translation: {
+            type: SchemaType.STRING,
+            description:
+              'Natural Korean translation of the recommended English sentence that preserves its nuance and tone (not literal)',
+          },
           grammar_explanation: {
             type: SchemaType.STRING,
             description: 'Grammar explanation in Korean',
           },
         },
-        required: ['sentence', 'context_and_nuance', 'grammar_explanation'],
+        required: [
+          'sentence',
+          'context_and_nuance',
+          'korean_translation',
+          'grammar_explanation',
+        ],
       },
     },
   },

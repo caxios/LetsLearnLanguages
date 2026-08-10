@@ -38,6 +38,7 @@ export function useEvaluation() {
         recommendations: response.recommendations.map((rec) => ({
           sentence: rec.sentence,
           contextAndNuance: rec.context_and_nuance,
+          koreanTranslation: rec.korean_translation,
           grammarExplanation: rec.grammar_explanation,
         })),
       });
