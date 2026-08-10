@@ -4,7 +4,9 @@ import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { DailyMessageCard } from '@/components/daily/DailyMessageCard';
 import { DailySentenceList } from '@/components/daily/DailySentenceList';
+import { StatsPanel } from '@/components/daily/StatsPanel';
 import { StreakBadge } from '@/components/daily/StreakBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Colors } from '@/constants/colors';
@@ -16,6 +18,7 @@ import {
   useMarkSentenceViewed,
   useRefreshDailySentences,
 } from '@/hooks/useDailySentences';
+import { useDailyMessage } from '@/hooks/useDailyMessage';
 import { useRecordVisit } from '@/hooks/useRecordVisit';
 import { useStats } from '@/hooks/useStats';
 import { useInputStore } from '@/stores/useInputStore';
@@ -24,6 +27,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const sentences = useDailySentences();
   const stats = useStats();
+  const dailyMessage = useDailyMessage();
   const markViewed = useMarkSentenceViewed();
   const refreshSentences = useRefreshDailySentences();
 
@@ -60,6 +64,7 @@ export default function HomeScreen() {
           onRefresh={() => {
             sentences.refetch();
             stats.refetch();
+            dailyMessage.refetch();
           }}
           tintColor={Colors.textSecondary}
         />
@@ -76,6 +81,11 @@ export default function HomeScreen() {
           today={stats.data?.today ?? format(new Date(), 'yyyy-MM-dd')}
         />
       )}
+
+      <DailyMessageCard
+        message={dailyMessage.data?.message}
+        isLoading={dailyMessage.isLoading}
+      />
 
       <View style={styles.sectionHeader}>
         <View>
@@ -128,13 +138,14 @@ export default function HomeScreen() {
 
       <View style={styles.divider} />
 
-      <Text style={styles.sectionTitle}>최근 학습</Text>
       {stats.isLoading ? (
-        <Skeleton height={18} width="70%" />
+        <Skeleton height={160} borderRadius={16} />
       ) : (
-        <Text style={styles.stats}>
-          평균 점수: {stats.data?.averageScore ?? 0}점 | 총 {stats.data?.total ?? 0}문장
-        </Text>
+        <StatsPanel
+          uniqueSentences={stats.data?.uniqueSentences ?? 0}
+          totalReviews={stats.data?.totalReviews ?? 0}
+          averageScore={stats.data?.averageScore ?? 0}
+        />
       )}
     </ScrollView>
   );
@@ -199,10 +210,5 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     fontSize: FontSizes.sm,
     color: Colors.error,
-  },
-  stats: {
-    fontFamily: Fonts.body,
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
   },
 });

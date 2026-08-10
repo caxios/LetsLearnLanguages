@@ -38,6 +38,8 @@ export function useSubmitReviewAttempt() {
     },
     onSuccess: (_attempt, variables) => {
       queryClient.invalidateQueries({ queryKey: ['reviewAttempts', variables.reviewCardId] });
+      // The home screen counts completed reviews.
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }

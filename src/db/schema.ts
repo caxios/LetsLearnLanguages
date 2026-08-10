@@ -94,6 +94,16 @@ export const reviewAttempts = sqliteTable('review_attempts', {
     .default(sql`(datetime('now'))`),
 });
 
+/** One AI-written encouragement per day, cached so it stays stable until refreshed. */
+export const dailyMessages = sqliteTable('daily_messages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  dateAssigned: text('date_assigned').notNull().unique(),
+  message: text('message').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export type DailySentence = typeof dailySentences.$inferSelect;
 export type NewDailySentence = typeof dailySentences.$inferInsert;
 export type UserInput = typeof userInputs.$inferSelect;
@@ -107,3 +117,4 @@ export type NewReviewCard = typeof reviewCards.$inferInsert;
 export type AppVisit = typeof appVisits.$inferSelect;
 export type ReviewAttempt = typeof reviewAttempts.$inferSelect;
 export type NewReviewAttempt = typeof reviewAttempts.$inferInsert;
+export type DailyMessage = typeof dailyMessages.$inferSelect;

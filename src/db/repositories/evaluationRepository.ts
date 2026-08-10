@@ -116,6 +116,19 @@ export const evaluationRepository = {
     return row ?? { total: 0, averageScore: 0 };
   },
 
+  /**
+   * How many *different* Korean sentences have been translated. Retrying the same
+   * sentence sharpens it but doesn't widen coverage, so it counts once.
+   */
+  async getUniqueSentenceCount(): Promise<number> {
+    const [row] = await db
+      .select({ count: sql<number>`count(distinct ${userInputs.koreanText})` })
+      .from(userInputs)
+      .innerJoin(evaluations, eq(evaluations.userInputId, userInputs.id));
+
+    return row?.count ?? 0;
+  },
+
   // Distinct days (UTC, YYYY-MM-DD) on which the user submitted something, newest first
   async getActivityDates(): Promise<string[]> {
     const rows = await db

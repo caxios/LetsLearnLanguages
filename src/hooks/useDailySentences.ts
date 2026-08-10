@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { sentenceRepository } from '@/db/repositories/sentenceRepository';
+import { refreshDailyMessage } from '@/services/dailyMessage';
 import { getOrCreateDailySentences, refreshDailySentences } from '@/services/dailySentences';
 
 export function todayKey() {
@@ -23,9 +24,19 @@ export function useRefreshDailySentences() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => refreshDailySentences(todayKey()),
+    mutationFn: async () => {
+      const date = todayKey();
+      const sentences = await refreshDailySentences(date);
+
+      // New day's content deserves a new encouragement — but a failure here must
+      // not fail the refresh the user actually asked for.
+      await refreshDailyMessage(date).catch(() => null);
+
+      return sentences;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailySentences'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyMessage'] });
     },
   });
 }

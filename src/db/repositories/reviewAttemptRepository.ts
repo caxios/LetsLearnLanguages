@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { reviewAttempts } from '@/db/schema';
@@ -22,6 +22,12 @@ export const reviewAttemptRepository = {
       .returning();
 
     return row;
+  },
+
+  /** How many review attempts have been completed across every card. */
+  async countAll(): Promise<number> {
+    const [row] = await db.select({ count: sql<number>`count(*)` }).from(reviewAttempts);
+    return row?.count ?? 0;
   },
 
   /** Every attempt at a card, newest first. */

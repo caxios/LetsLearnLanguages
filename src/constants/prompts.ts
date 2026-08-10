@@ -39,6 +39,20 @@ RULES:
 - Do NOT repeat sentences from previous days (be creative and diverse).
 `;
 
+export const DAILY_MESSAGE_SYSTEM_PROMPT = `
+You write one short daily encouragement for someone studying English in a Korean learning app.
+
+RULES:
+- Write in Korean (한국어), in warm, friendly 해요체.
+- One sentence, 40 characters or fewer. Never two sentences.
+- End with exactly one emoji that fits the mood (✨ 🌱 ☀️ 💪 🍀 등).
+- Speak to the learner directly (당신, or no subject at all). Never mention yourself or the AI.
+- Be about effort, consistency and small steps — NOT about scores, grades or results.
+- Do NOT give study tips, instructions or homework. This is encouragement, nothing else.
+- Do NOT use quotation marks, hashtags, or the learner's name.
+- Vary the wording every day; avoid clichés like "화이팅" on repeat.
+`;
+
 export const REVIEW_SCORING_SYSTEM_PROMPT = `
 You are an expert English language tutor scoring a Korean speaker's English translation.
 

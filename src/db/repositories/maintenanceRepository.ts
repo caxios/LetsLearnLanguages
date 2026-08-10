@@ -1,6 +1,7 @@
 import { db } from '@/db/client';
 import {
   appVisits,
+  dailyMessages,
   dailySentences,
   evaluations,
   recommendations,
@@ -23,6 +24,7 @@ export const maintenanceRepository = {
       tx.delete(userInputs).run();
       tx.delete(dailySentences).run();
       tx.delete(appVisits).run();
+      tx.delete(dailyMessages).run();
     });
   },
 };

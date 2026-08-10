@@ -1,5 +1,14 @@
+import { SymbolView } from 'expo-symbols';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
 import { ReviewAttemptPanel, formatAttemptDate } from '@/components/evaluation/ReviewAttemptPanel';
@@ -13,7 +22,7 @@ import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
 import type { ReviewCard as ReviewCardRow } from '@/db/schema';
 import { useEvaluationResult } from '@/hooks/useEvaluationResult';
-import { useReviewCards } from '@/hooks/useReviewCards';
+import { useDeleteReviewCard, useReviewCards } from '@/hooks/useReviewCards';
 
 /**
  * Every bookmarked card that is due is listed and can be revealed independently.
@@ -24,6 +33,7 @@ import { useReviewCards } from '@/hooks/useReviewCards';
  */
 export default function ReviewScreen() {
   const cards = useReviewCards();
+  const deleteCard = useDeleteReviewCard();
   const [revealed, setRevealed] = useState<Record<number, boolean>>({});
 
   const dueCards = useMemo(() => cards.data ?? [], [cards.data]);
@@ -31,6 +41,18 @@ export default function ReviewScreen() {
 
   const toggle = (id: number) => setRevealed((current) => ({ ...current, [id]: !current[id] }));
   const reveal = (id: number) => setRevealed((current) => ({ ...current, [id]: true }));
+
+  // Deleting throws away the card's attempt history, so ask first.
+  const confirmDelete = (card: ReviewCardRow) => {
+    Alert.alert('이 카드를 삭제할까요?', `«${card.koreanText}»\n복습 기록도 함께 사라집니다.`, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: () => deleteCard.mutate(card.id),
+      },
+    ]);
+  };
 
   return (
     <ScrollView
@@ -64,6 +86,7 @@ export default function ReviewScreen() {
             revealed={!!revealed[card.id]}
             onToggle={() => toggle(card.id)}
             onScored={() => reveal(card.id)}
+            onDelete={() => confirmDelete(card)}
           />
         ))
       )}
@@ -87,6 +110,7 @@ function ReviewFlashcard({
   revealed,
   onToggle,
   onScored,
+  onDelete,
 }: {
   card: ReviewCardRow;
   index: number;
@@ -94,15 +118,32 @@ function ReviewFlashcard({
   revealed: boolean;
   onToggle: () => void;
   onScored: () => void;
+  onDelete: () => void;
 }) {
   return (
     <View style={styles.flashcard}>
       <Card variant="elevated" style={styles.card}>
-        <View style={styles.prompt}>
+        <View style={styles.cardHeader}>
           <Text style={styles.counter}>
             {index + 1} / {total}
           </Text>
 
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${index + 1}번 카드 삭제`}
+            onPress={onDelete}
+            hitSlop={10}
+            style={({ pressed }) => [styles.delete, pressed && styles.deletePressed]}
+          >
+            <SymbolView
+              name={{ ios: 'trash', android: 'delete', web: 'delete' }}
+              size={18}
+              tintColor={Colors.textMuted}
+            />
+          </Pressable>
+        </View>
+
+        <View style={styles.prompt}>
           <Text style={styles.korean}>{card.koreanText}</Text>
         </View>
 
@@ -212,10 +253,21 @@ const styles = StyleSheet.create({
   card: {
     gap: Spacing.base,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  delete: {
+    padding: Spacing.xs,
+  },
+  deletePressed: {
+    opacity: 0.5,
+  },
   prompt: {
     alignItems: 'center',
     gap: Spacing.base,
-    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
   },
   counter: {
     fontFamily: Fonts.mono,
