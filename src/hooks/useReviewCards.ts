@@ -9,7 +9,7 @@ export function useReviewCards() {
   });
 }
 
-/** Drop a mastered card from the deck, along with its logged attempts. */
+/** Drop a mastered card from the deck. Its logged attempts stay in the record. */
 export function useDeleteReviewCard() {
   const queryClient = useQueryClient();
 
@@ -17,8 +17,6 @@ export function useDeleteReviewCard() {
     mutationFn: (id: number) => reviewRepository.deleteById(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviewCards'] });
-      // The deck's attempts are gone with it, so the home counters move too.
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }

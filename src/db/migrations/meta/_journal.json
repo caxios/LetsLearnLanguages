@@ -29,6 +29,13 @@
       "when": 1786352349104,
       "tag": "0003_dapper_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786358801480,
+      "tag": "0004_boring_the_santerians",
+      "breakpoints": true
     }
   ]
 }

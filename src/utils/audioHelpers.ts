@@ -25,6 +25,19 @@ export async function getFileBytes(uri: string): Promise<number> {
   return file.exists ? file.size || 0 : 0;
 }
 
+/**
+ * Existence and size in one look, so an upload can tell "no recording" apart
+ * from "empty recording". A URI the platform can't stat reads as missing.
+ */
+export async function getAudioFileInfo(uri: string): Promise<{ exists: boolean; size: number }> {
+  try {
+    const file = new File(uri);
+    return { exists: file.exists, size: file.exists ? file.size || 0 : 0 };
+  } catch {
+    return { exists: false, size: 0 };
+  }
+}
+
 // Clean up a recorded audio file
 export async function deleteAudioFile(uri: string): Promise<void> {
   const file = new File(uri);

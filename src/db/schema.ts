@@ -78,12 +78,14 @@ export const appVisits = sqliteTable('app_visits', {
     .default(sql`(datetime('now'))`),
 });
 
-/** A re-attempt at a bookmarked card. Scores only — no feedback is generated. */
+/**
+ * A re-attempt at a bookmarked card. Scores only — no feedback is generated.
+ * `reviewCardId` is nullable on purpose: deleting a card detaches its attempts
+ * rather than erasing them, so lifetime practice effort is never lost.
+ */
 export const reviewAttempts = sqliteTable('review_attempts', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  reviewCardId: integer('review_card_id')
-    .notNull()
-    .references(() => reviewCards.id),
+  reviewCardId: integer('review_card_id').references(() => reviewCards.id),
   englishInput: text('english_input').notNull(),
   naturalnessScore: integer('naturalness_score').notNull(),
   grammarScore: integer('grammar_score').notNull(),

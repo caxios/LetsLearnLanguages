@@ -24,7 +24,10 @@ export const reviewAttemptRepository = {
     return row;
   },
 
-  /** How many review attempts have been completed across every card. */
+  /**
+   * Lifetime completed review attempts, including those whose card has since been
+   * deleted — the effort was still made.
+   */
   async countAll(): Promise<number> {
     const [row] = await db.select({ count: sql<number>`count(*)` }).from(reviewAttempts);
     return row?.count ?? 0;

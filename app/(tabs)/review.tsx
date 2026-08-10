@@ -42,16 +42,19 @@ export default function ReviewScreen() {
   const toggle = (id: number) => setRevealed((current) => ({ ...current, [id]: !current[id] }));
   const reveal = (id: number) => setRevealed((current) => ({ ...current, [id]: true }));
 
-  // Deleting throws away the card's attempt history, so ask first.
   const confirmDelete = (card: ReviewCardRow) => {
-    Alert.alert('이 카드를 삭제할까요?', `«${card.koreanText}»\n복습 기록도 함께 사라집니다.`, [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: () => deleteCard.mutate(card.id),
-      },
-    ]);
+    Alert.alert(
+      '이 카드를 삭제할까요?',
+      `«${card.koreanText}»\n복습 목록에서만 빠지고, 지금까지의 복습 기록은 그대로 남아요.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => deleteCard.mutate(card.id),
+        },
+      ]
+    );
   };
 
   return (

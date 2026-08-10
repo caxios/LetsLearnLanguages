@@ -1,9 +1,28 @@
+import { Platform } from 'react-native';
+
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { getAudioFileInfo } from '@/utils/audioHelpers';
 
 const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 
 /** OpenAI rejects uploads above 25MB. */
 export const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+
+/** Uploads have no timeout of their own in React Native, so give them one. */
+export const DEFAULT_TIMEOUT_MS = 60_000;
+
+/** Containers Whisper accepts, mapped from the recorder's file extension. */
+const MIME_BY_EXTENSION: Record<string, string> = {
+  m4a: 'audio/m4a',
+  mp4: 'audio/mp4',
+  mp3: 'audio/mpeg',
+  mpga: 'audio/mpeg',
+  wav: 'audio/wav',
+  webm: 'audio/webm',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  flac: 'audio/flac',
+};
 
 function messageForStatus(status: number, body: string): string {
   switch (status) {
@@ -18,25 +37,78 @@ function messageForStatus(status: number, body: string): string {
   }
 }
 
-export async function transcribe(audioUri: string): Promise<string> {
+/** `file:///.../Audio/recording-1730.m4a?x=1` → `recording-1730.m4a`. */
+export function fileNameFor(audioUri: string): string {
+  const path = audioUri.split('?')[0].split('#')[0];
+  const name = path.split('/').pop() ?? '';
+  return name.includes('.') ? name : 'recording.m4a';
+}
+
+export function mimeTypeFor(fileName: string): string {
+  const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
+  return MIME_BY_EXTENSION[extension] ?? 'audio/m4a';
+}
+
+/**
+ * React Native uploads `{uri, type, name}` parts natively, but on web that object
+ * is stringified — the recording has to be read into a Blob there instead.
+ */
+async function appendRecording(formData: FormData, audioUri: string) {
+  const name = fileNameFor(audioUri);
+  const type = mimeTypeFor(name);
+
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(audioUri)).blob();
+    formData.append('file', blob, name);
+    return;
+  }
+
+  formData.append('file', { uri: audioUri, type, name } as unknown as Blob);
+}
+
+/**
+ * Fail on the recording itself before blaming the network. A missing or empty
+ * take makes the upload throw exactly like an offline device would.
+ */
+async function assertUploadable(audioUri: string) {
+  if (Platform.OS === 'web') return; // blob: URLs aren't files on disk
+
+  const { exists, size } = await getAudioFileInfo(audioUri);
+
+  if (!exists) {
+    throw new Error('The recording could not be found. Please record again.');
+  }
+
+  if (size === 0) {
+    throw new Error('The recording is empty. Please record again and speak clearly.');
+  }
+
+  if (size > MAX_AUDIO_BYTES) {
+    throw new Error('Recording is too long. Please keep recordings under 25MB.');
+  }
+}
+
+export async function transcribe(
+  audioUri: string,
+  { timeoutMs = DEFAULT_TIMEOUT_MS }: { timeoutMs?: number } = {}
+): Promise<string> {
   const apiKey = useSettingsStore.getState().openaiApiKey;
 
   if (!apiKey) {
     throw new Error('OpenAI API key not configured. Please add it in Settings.');
   }
 
-  // Build FormData for multipart upload
-  const formData = new FormData();
+  await assertUploadable(audioUri);
 
-  formData.append('file', {
-    uri: audioUri,
-    type: 'audio/m4a',
-    name: 'recording.m4a',
-  } as any);
+  const formData = new FormData();
+  await appendRecording(formData, audioUri);
 
   formData.append('model', 'whisper-1');
   formData.append('language', 'en');
   formData.append('response_format', 'json');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {
@@ -47,9 +119,19 @@ export async function transcribe(audioUri: string): Promise<string> {
         // Do NOT set Content-Type — fetch will set it with the correct boundary
       },
       body: formData,
+      signal: controller.signal,
     });
-  } catch {
-    throw new Error('Unable to connect. Please check your internet connection.');
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error('Transcription timed out. Please try again on a stronger connection.');
+    }
+
+    // Keep the underlying reason: not every upload failure is a dead network.
+    const detail = error instanceof Error ? error.message : String(error);
+    console.warn('[whisper] upload failed', { audioUri, platform: Platform.OS, detail });
+    throw new Error(`Unable to reach the transcription service (${detail}).`);
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {

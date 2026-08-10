@@ -38,7 +38,6 @@ export const reviewRepository = {
 
   // Remove the card bookmarked for an evaluation (un-bookmarking)
   async deleteByEvaluationId(evaluationId: number) {
-    // Attempts reference the card and foreign keys are enforced, so they go first.
     return db.transaction((tx) => {
       const doomed = tx
         .select({ id: reviewCards.id })
@@ -49,15 +48,25 @@ export const reviewRepository = {
 
       if (doomed.length === 0) return;
 
-      tx.delete(reviewAttempts).where(inArray(reviewAttempts.reviewCardId, doomed)).run();
+      // Detach, don't delete: the practice happened, so it stays in the record.
+      tx.update(reviewAttempts)
+        .set({ reviewCardId: null })
+        .where(inArray(reviewAttempts.reviewCardId, doomed))
+        .run();
       tx.delete(reviewCards).where(eq(reviewCards.evaluationId, evaluationId)).run();
     });
   },
 
-  /** Drop a single card from the deck, together with every attempt logged against it. */
+  /**
+   * Drop a single card from the deck. Its attempts survive as unattached history —
+   * lifetime practice counts must not fall when a mastered card is cleared out.
+   */
   async deleteById(id: number) {
     return db.transaction((tx) => {
-      tx.delete(reviewAttempts).where(eq(reviewAttempts.reviewCardId, id)).run();
+      tx.update(reviewAttempts)
+        .set({ reviewCardId: null })
+        .where(eq(reviewAttempts.reviewCardId, id))
+        .run();
       tx.delete(reviewCards).where(eq(reviewCards.id, id)).run();
     });
   },
