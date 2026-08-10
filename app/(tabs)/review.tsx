@@ -17,7 +17,9 @@ import { useReviewCards } from '@/hooks/useReviewCards';
 
 /**
  * Every bookmarked card that is due is listed and can be revealed independently.
- * Revealing replays the full evaluation, not just the answer sentence.
+ * The front of a card is a working surface: the Korean prompt plus a re-translation
+ * box, so the sentence can be attempted before the answer is shown. Scoring an
+ * attempt reveals the card, and revealing replays the whole original evaluation.
  * SM-2 grading buttons ("다시 / 어려움 / 보통 / 쉬움") arrive in Phase 6.
  */
 export default function ReviewScreen() {
@@ -28,9 +30,14 @@ export default function ReviewScreen() {
   const revealedCount = dueCards.filter((card) => revealed[card.id]).length;
 
   const toggle = (id: number) => setRevealed((current) => ({ ...current, [id]: !current[id] }));
+  const reveal = (id: number) => setRevealed((current) => ({ ...current, [id]: true }));
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       {cards.isLoading ? (
         <Skeleton height={20} width="60%" />
       ) : (
@@ -56,6 +63,7 @@ export default function ReviewScreen() {
             total={dueCards.length}
             revealed={!!revealed[card.id]}
             onToggle={() => toggle(card.id)}
+            onScored={() => reveal(card.id)}
           />
         ))
       )}
@@ -78,57 +86,61 @@ function ReviewFlashcard({
   total,
   revealed,
   onToggle,
+  onScored,
 }: {
   card: ReviewCardRow;
   index: number;
   total: number;
   revealed: boolean;
   onToggle: () => void;
+  onScored: () => void;
 }) {
   return (
     <View style={styles.flashcard}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={
-          revealed ? `${index + 1}번 카드 정답 숨기기` : `${index + 1}번 카드 정답 보기`
-        }
-        accessibilityState={{ expanded: revealed }}
-        onPress={onToggle}
-      >
-        <Card variant="elevated" style={styles.card}>
+      <Card variant="elevated" style={styles.card}>
+        <View style={styles.prompt}>
           <Text style={styles.counter}>
             {index + 1} / {total}
           </Text>
 
           <Text style={styles.korean}>{card.koreanText}</Text>
+        </View>
 
-          {revealed ? (
-            <View style={styles.answer}>
-              <Text style={styles.answerLabel}>정답</Text>
-              <Text style={styles.english}>{card.bestEnglish}</Text>
-              <Text style={styles.hint}>탭해서 정답 숨기기</Text>
-            </View>
-          ) : (
-            <Text style={styles.hint}>탭해서 정답 보기</Text>
-          )}
-        </Card>
-      </Pressable>
+        {/* The attempt box lives on the front face — nothing has to be revealed first. */}
+        <ReviewAttemptPanel
+          reviewCardId={card.id}
+          koreanText={card.koreanText}
+          onScored={onScored}
+        />
 
-      {revealed && (
-        <ReviewEvaluationDetail evaluationId={card.evaluationId} card={card} />
-      )}
+        {revealed && (
+          <View style={styles.answer}>
+            <Text style={styles.answerLabel}>정답</Text>
+            <Text style={styles.english}>{card.bestEnglish}</Text>
+          </View>
+        )}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            revealed ? `${index + 1}번 카드 정답 숨기기` : `${index + 1}번 카드 정답 보기`
+          }
+          accessibilityState={{ expanded: revealed }}
+          onPress={onToggle}
+          hitSlop={8}
+          style={({ pressed }) => [styles.revealRow, pressed && styles.revealPressed]}
+        >
+          <Text style={styles.hint}>{revealed ? '탭해서 정답 숨기기' : '탭해서 정답 보기'}</Text>
+        </Pressable>
+      </Card>
+
+      {revealed && <ReviewEvaluationDetail evaluationId={card.evaluationId} />}
     </View>
   );
 }
 
-/** Replays the original evaluation and offers a fresh, score-only re-attempt. */
-function ReviewEvaluationDetail({
-  evaluationId,
-  card,
-}: {
-  evaluationId: number;
-  card: ReviewCardRow;
-}) {
+/** Replays the original evaluation so a fresh attempt can be compared against it. */
+function ReviewEvaluationDetail({ evaluationId }: { evaluationId: number }) {
   const result = useEvaluationResult(evaluationId);
 
   if (result.isLoading) {
@@ -165,8 +177,6 @@ function ReviewEvaluationDetail({
         <Text style={styles.detailBody}>{evaluation.input.englishInput}</Text>
       </Card>
 
-      <ReviewAttemptPanel reviewCardId={card.id} koreanText={card.koreanText} />
-
       <FeedbackPanel feedback={evaluation.feedback} />
 
       <RecommendationList
@@ -200,10 +210,12 @@ const styles = StyleSheet.create({
     gap: Spacing.base,
   },
   card: {
-    minHeight: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: Spacing.base,
+  },
+  prompt: {
+    alignItems: 'center',
+    gap: Spacing.base,
+    paddingTop: Spacing.md,
   },
   counter: {
     fontFamily: Fonts.mono,
@@ -236,6 +248,12 @@ const styles = StyleSheet.create({
     lineHeight: FontSizes.lg * 1.4,
     color: Colors.textPrimary,
     textAlign: 'center',
+  },
+  revealRow: {
+    paddingVertical: Spacing.xs,
+  },
+  revealPressed: {
+    opacity: 0.6,
   },
   hint: {
     fontFamily: Fonts.body,

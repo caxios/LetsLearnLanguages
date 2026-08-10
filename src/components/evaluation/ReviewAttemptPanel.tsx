@@ -25,13 +25,19 @@ export function formatAttemptDate(timestamp: string): string {
 interface ReviewAttemptPanelProps {
   reviewCardId: number;
   koreanText: string;
+  /** Fired after an attempt scores, so the host card can flip itself open. */
+  onScored?: () => void;
 }
 
 /**
  * Lets the user re-translate a bookmarked sentence and get the three scores back.
  * Reviews are score-only by design — no feedback or recommendations are generated.
  */
-export function ReviewAttemptPanel({ reviewCardId, koreanText }: ReviewAttemptPanelProps) {
+export function ReviewAttemptPanel({
+  reviewCardId,
+  koreanText,
+  onScored,
+}: ReviewAttemptPanelProps) {
   const [draft, setDraft] = useState('');
   const attempts = useReviewAttempts(reviewCardId);
   const submit = useSubmitReviewAttempt();
@@ -43,6 +49,8 @@ export function ReviewAttemptPanel({ reviewCardId, koreanText }: ReviewAttemptPa
     try {
       await submit.mutateAsync({ reviewCardId, koreanText, englishText: draft.trim() });
       setDraft('');
+      // Scoring is the moment the answer stops being a spoiler.
+      onScored?.();
     } catch {
       // Surfaced below via submit.isError.
     }
@@ -51,7 +59,7 @@ export function ReviewAttemptPanel({ reviewCardId, koreanText }: ReviewAttemptPa
   return (
     <Card>
       <Text style={styles.heading}>✍️ 다시 번역해 보기</Text>
-      <Text style={styles.sub}>새로 번역해 보고 예전 점수와 비교해 보세요.</Text>
+      <Text style={styles.sub}>정답을 보기 전에 먼저 번역해 보세요. 채점하면 정답이 열립니다.</Text>
 
       <ReviewDraftInput value={draft} onChangeText={setDraft} onSubmit={handleSubmit} />
 
