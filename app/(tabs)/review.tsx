@@ -10,10 +10,8 @@ import {
   View,
 } from 'react-native';
 
-import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
-import { ReviewAttemptPanel, formatAttemptDate } from '@/components/evaluation/ReviewAttemptPanel';
-import { RecommendationList } from '@/components/evaluation/RecommendationList';
-import { ScoreCard } from '@/components/evaluation/ScoreCard';
+import { EvaluationDetail } from '@/components/evaluation/EvaluationDetail';
+import { ReviewAttemptPanel } from '@/components/evaluation/ReviewAttemptPanel';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -203,36 +201,7 @@ function ReviewEvaluationDetail({ evaluationId }: { evaluationId: number }) {
     );
   }
 
-  const evaluation = result.data;
-
-  return (
-    <View style={styles.detail}>
-      <ScoreCard
-        naturalness={evaluation.naturalnessScore}
-        grammar={evaluation.grammarScore}
-        meaningClarity={evaluation.meaningClarityScore}
-      />
-
-      <Card variant="outlined">
-        <View style={styles.detailHeader}>
-          <Text style={styles.detailLabel}>나의 번역</Text>
-          <Text style={styles.detailDate}>{formatAttemptDate(evaluation.input.createdAt)}</Text>
-        </View>
-        <Text style={styles.detailBody}>{evaluation.input.englishInput}</Text>
-      </Card>
-
-      <FeedbackPanel feedback={evaluation.feedback} />
-
-      <RecommendationList
-        recommendations={evaluation.recommendations.map((rec) => ({
-          sentence: rec.sentence,
-          contextAndNuance: rec.contextAndNuance,
-          koreanTranslation: rec.koreanTranslation,
-          grammarExplanation: rec.grammarExplanation,
-        }))}
-      />
-    </View>
-  );
+  return <EvaluationDetail evaluation={result.data} />;
 }
 
 const styles = StyleSheet.create({
@@ -316,34 +285,9 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
-  detail: {
-    gap: Spacing.base,
-  },
   detailLoading: {
     paddingVertical: Spacing.lg,
     alignItems: 'center',
-  },
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  detailDate: {
-    fontFamily: Fonts.body,
-    fontSize: FontSizes.xs,
-    color: Colors.textMuted,
-  },
-  detailLabel: {
-    fontFamily: Fonts.bodyMedium,
-    fontSize: FontSizes.xs,
-    color: Colors.textMuted,
-  },
-  detailBody: {
-    marginTop: Spacing.xs,
-    fontFamily: Fonts.body,
-    fontSize: FontSizes.base,
-    lineHeight: FontSizes.base * 1.5,
-    color: Colors.textPrimary,
   },
   progress: {
     gap: Spacing.sm,

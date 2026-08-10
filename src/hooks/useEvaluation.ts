@@ -50,6 +50,8 @@ export function useEvaluation() {
       // Invalidate related queries so they refetch
       queryClient.invalidateQueries({ queryKey: ['dailySentences'] });
       queryClient.invalidateQueries({ queryKey: ['recentEvaluations'] });
+      // Re-opening the sentence must show this attempt, not the one before it.
+      queryClient.invalidateQueries({ queryKey: ['evaluation', 'forSentence'] });
       queryClient.invalidateQueries({ queryKey: ['reviewCards'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
     },

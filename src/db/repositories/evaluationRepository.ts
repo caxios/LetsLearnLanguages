@@ -140,6 +140,23 @@ export const evaluationRepository = {
     return rows.map((row) => row.day);
   },
 
+  /**
+   * The most recent evaluation for a daily sentence, or null if it hasn't been
+   * translated yet. Sentences swapped out by a refresh have their link nulled,
+   * so this only ever finds attempts at the sentence still on the card.
+   */
+  async getLatestIdForDailySentence(dailySentenceId: number): Promise<number | null> {
+    const rows = await db
+      .select({ id: evaluations.id })
+      .from(evaluations)
+      .innerJoin(userInputs, eq(evaluations.userInputId, userInputs.id))
+      .where(eq(userInputs.dailySentenceId, dailySentenceId))
+      .orderBy(desc(evaluations.createdAt), desc(evaluations.id))
+      .limit(1);
+
+    return rows[0]?.id ?? null;
+  },
+
   // Get recent evaluations (for history/activity feed)
   async getRecent(limit: number = 10) {
     return db

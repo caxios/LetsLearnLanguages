@@ -42,7 +42,8 @@ export function SentenceCard({
 
       <Text style={[styles.korean, isCompleted && styles.koreanDone]}>{koreanText}</Text>
 
-      <Text style={styles.action}>{isCompleted ? '다시 풀기 →' : '번역하기 →'}</Text>
+      {/* A finished sentence opens on its last result, not on a blank form. */}
+      <Text style={styles.action}>{isCompleted ? '결과 보기 →' : '번역하기 →'}</Text>
     </Card>
   );
 }

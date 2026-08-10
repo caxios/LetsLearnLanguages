@@ -1,5 +1,3 @@
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -10,17 +8,7 @@ import { FontSizes, Fonts } from '@/constants/fonts';
 import { BorderRadius, Spacing } from '@/constants/layout';
 import type { ReviewAttempt } from '@/db/schema';
 import { useReviewAttempts, useSubmitReviewAttempt } from '@/hooks/useReviewAttempt';
-
-/** `created_at` is stored as UTC "YYYY-MM-DD HH:MM:SS". */
-export function formatAttemptDate(timestamp: string): string {
-  try {
-    const parsed = parseISO(timestamp.replace(' ', 'T') + 'Z');
-    if (Number.isNaN(parsed.getTime())) return timestamp;
-    return format(parsed, 'yyyy년 M월 d일', { locale: ko });
-  } catch {
-    return timestamp;
-  }
-}
+import { formatAttemptDate } from '@/utils/dates';
 
 interface ReviewAttemptPanelProps {
   reviewCardId: number;
