@@ -8,19 +8,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Kept in sync with src/constants/colors.ts (the source of truth).
         primary: {
-          50: '#EEF2FF',
-          100: '#E0E7FF',
-          500: '#6366F1',
-          600: '#4F46E5',
-          700: '#4338CA',
+          50: '#EFEEFF',
+          100: '#DEDCFF',
+          500: '#8B83FF',
+          600: '#6C63FF',
+          700: '#4F46E5',
         },
         surface: {
-          DEFAULT: '#1E1E2E',
-          light: '#2A2A3E',
-          dark: '#16161F',
+          DEFAULT: '#1A1A2E',
+          light: '#25253B',
+          dark: '#0F0F1A',
         },
-        accent: '#F59E0B',
+        accent: '#00D4AA',
       },
     },
   },

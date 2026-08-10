@@ -59,6 +59,7 @@ export function useEvaluation() {
       queryClient.invalidateQueries({ queryKey: ['dailySentences'] });
       queryClient.invalidateQueries({ queryKey: ['recentEvaluations'] });
       queryClient.invalidateQueries({ queryKey: ['reviewCards'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }

@@ -1,31 +1,122 @@
-import { StyleSheet } from 'react-native';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { useRouter } from 'expo-router';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+import { DailySentenceList } from '@/components/daily/DailySentenceList';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Colors } from '@/constants/colors';
+import { FontSizes, Fonts } from '@/constants/fonts';
+import { Spacing } from '@/constants/layout';
+import type { DailySentence } from '@/db/schema';
+import { useDailySentences } from '@/hooks/useDailySentences';
+import { useStats } from '@/hooks/useStats';
+import { useInputStore } from '@/stores/useInputStore';
 
-export default function TabOneScreen() {
+export default function HomeScreen() {
+  const router = useRouter();
+  const sentences = useDailySentences();
+  const stats = useStats();
+
+  const setKoreanText = useInputStore((s) => s.setKoreanText);
+  const setDailySentenceId = useInputStore((s) => s.setDailySentenceId);
+  const setEnglishText = useInputStore((s) => s.setEnglishText);
+
+  const handleSentencePress = (sentence: DailySentence) => {
+    setKoreanText(sentence.koreanText);
+    setDailySentenceId(sentence.id);
+    setEnglishText('');
+    router.push('/free-input');
+  };
+
+  const today = format(new Date(), 'yyyy년 M월 d일 EEEE', { locale: ko });
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
-    </View>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={sentences.isFetching && !sentences.isLoading}
+          onRefresh={() => {
+            sentences.refetch();
+            stats.refetch();
+          }}
+          tintColor={Colors.textSecondary}
+        />
+      }
+    >
+      <View style={styles.header}>
+        <Text style={styles.date}>📅 {today}</Text>
+        {stats.isLoading ? (
+          <Skeleton height={18} width={140} />
+        ) : (
+          <Text style={styles.streak}>
+            🔥 {stats.data?.streak ?? 0}일 연속 학습 중
+          </Text>
+        )}
+      </View>
+
+      <Text style={styles.sectionTitle}>오늘의 문장</Text>
+
+      <DailySentenceList
+        sentences={sentences.data}
+        isLoading={sentences.isLoading}
+        error={sentences.error as Error | null}
+        onSentencePress={handleSentencePress}
+        onRetry={() => sentences.refetch()}
+      />
+
+      <View style={styles.divider} />
+
+      <Text style={styles.sectionTitle}>최근 학습</Text>
+      {stats.isLoading ? (
+        <Skeleton height={18} width="70%" />
+      ) : (
+        <Text style={styles.stats}>
+          평균 점수: {stats.data?.averageScore ?? 0}점 | 총 {stats.data?.total ?? 0}문장
+        </Text>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: Colors.background,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  content: {
+    padding: Spacing.base,
+    paddingBottom: Spacing['3xl'],
+    gap: Spacing.base,
   },
-  separator: {
-    marginVertical: 30,
+  header: {
+    gap: Spacing.xs,
+  },
+  date: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+  },
+  streak: {
+    fontFamily: Fonts.headingSemiBold,
+    fontSize: FontSizes.base,
+    color: Colors.textPrimary,
+  },
+  sectionTitle: {
+    fontFamily: Fonts.heading,
+    fontSize: FontSizes.xl,
+    color: Colors.textPrimary,
+  },
+  divider: {
     height: 1,
-    width: '80%',
+    backgroundColor: Colors.divider,
+    marginVertical: Spacing.sm,
+  },
+  stats: {
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
   },
 });

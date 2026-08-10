@@ -11,6 +11,17 @@ export const reviewRepository = {
     return db.select().from(reviewCards).where(lte(reviewCards.nextReviewDate, today));
   },
 
+  // The card created for a given evaluation, if one exists
+  async getByEvaluationId(evaluationId: number) {
+    const rows = await db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.evaluationId, evaluationId))
+      .limit(1);
+
+    return rows[0] ?? null;
+  },
+
   // Create a new review card from an evaluation
   async create(data: { evaluationId: number; koreanText: string; bestEnglish: string }) {
     const today = format(new Date(), 'yyyy-MM-dd');

@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { evaluations, recommendations, userInputs } from '@/db/schema';
@@ -100,6 +100,29 @@ export const evaluationRepository = {
       input: input[0],
       recommendations: recs,
     };
+  },
+
+  // Aggregate totals for the home screen header
+  async getStats() {
+    const [row] = await db
+      .select({
+        total: sql<number>`count(*)`,
+        averageScore: sql<number>`coalesce(cast(round(avg(${evaluations.overallScore})) as integer), 0)`,
+      })
+      .from(evaluations);
+
+    return row ?? { total: 0, averageScore: 0 };
+  },
+
+  // Distinct days (UTC, YYYY-MM-DD) on which the user submitted something, newest first
+  async getActivityDates(): Promise<string[]> {
+    const rows = await db
+      .select({ day: sql<string>`date(${evaluations.createdAt})` })
+      .from(evaluations)
+      .groupBy(sql`date(${evaluations.createdAt})`)
+      .orderBy(desc(sql`date(${evaluations.createdAt})`));
+
+    return rows.map((row) => row.day);
   },
 
   // Get recent evaluations (for history/activity feed)

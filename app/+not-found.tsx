@@ -1,17 +1,19 @@
 import { Link, Stack } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { Colors } from '@/constants/colors';
+import { FontSizes, Fonts } from '@/constants/fonts';
+import { Spacing } from '@/constants/layout';
 
 export default function NotFoundScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
+      <Stack.Screen options={{ title: '없는 화면' }} />
       <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
+        <Text style={styles.title}>이 화면은 존재하지 않아요.</Text>
 
         <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
+          <Text style={styles.linkText}>홈으로 가기</Text>
         </Link>
       </View>
     </>
@@ -23,18 +25,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: Spacing.lg,
+    backgroundColor: Colors.background,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: Fonts.headingSemiBold,
+    fontSize: FontSizes.xl,
+    color: Colors.textPrimary,
   },
   link: {
-    marginTop: 15,
-    paddingVertical: 15,
+    marginTop: Spacing.base,
+    paddingVertical: Spacing.base,
   },
   linkText: {
-    fontSize: 14,
-    color: '#2e78b7',
+    fontFamily: Fonts.bodyMedium,
+    fontSize: FontSizes.sm,
+    color: Colors.primaryLight,
   },
 });

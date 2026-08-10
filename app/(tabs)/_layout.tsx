@@ -1,68 +1,84 @@
-import { SymbolView } from 'expo-symbols';
 import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { Pressable } from 'react-native';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { Colors } from '@/constants/colors';
+import { Fonts, FontSizes } from '@/constants/fonts';
+import { Spacing } from '@/constants/layout';
+
+const ICONS = {
+  home: { ios: 'house.fill', android: 'home', web: 'home' },
+  freeInput: { ios: 'square.and.pencil', android: 'edit', web: 'edit' },
+  review: { ios: 'arrow.triangle.2.circlepath', android: 'refresh', web: 'refresh' },
+} as const;
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        tabBarStyle: {
+          backgroundColor: Colors.surface,
+          borderTopColor: Colors.border,
+          height: 85,
+          paddingBottom: 20,
+        },
+        tabBarLabelStyle: {
+          fontFamily: Fonts.bodyMedium,
+          fontSize: FontSizes.xs,
+        },
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        headerStyle: {
+          backgroundColor: Colors.background,
+        },
+        headerTintColor: Colors.textPrimary,
+        headerTitleStyle: {
+          fontFamily: Fonts.headingSemiBold,
+        },
+        sceneStyle: {
+          backgroundColor: Colors.background,
+        },
+        headerRight: () => (
+          <Link href="/settings" asChild>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="설정"
+              style={{ marginRight: Spacing.base }}
+            >
+              {({ pressed }) => (
+                <SymbolView
+                  name={{ ios: 'gearshape.fill', android: 'settings', web: 'settings' }}
+                  size={24}
+                  tintColor={Colors.textSecondary}
+                  style={{ opacity: pressed ? 0.5 : 1 }}
+                />
+              )}
+            </Pressable>
+          </Link>
+        ),
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
+          title: '오늘의 문장',
+          tabBarIcon: ({ color }) => <SymbolView name={ICONS.home} size={26} tintColor={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="free-input"
+        options={{
+          title: '자유 입력',
           tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+            <SymbolView name={ICONS.freeInput} size={26} tintColor={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="review"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
+          title: '복습',
+          tabBarIcon: ({ color }) => <SymbolView name={ICONS.review} size={26} tintColor={color} />,
         }}
       />
     </Tabs>
