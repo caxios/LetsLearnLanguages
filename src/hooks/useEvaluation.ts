@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { evaluationRepository } from '@/db/repositories/evaluationRepository';
-import { reviewRepository } from '@/db/repositories/reviewRepository';
 import { evaluate } from '@/services/gemini';
 
 interface EvaluationInput {
@@ -43,15 +42,7 @@ export function useEvaluation() {
         })),
       });
 
-      // 3. Create a review card from the best recommendation
-      if (response.recommendations.length > 0) {
-        await reviewRepository.create({
-          evaluationId,
-          koreanText: input.koreanText,
-          bestEnglish: response.recommendations[0].sentence,
-        });
-      }
-
+      // Review cards are opt-in: the user bookmarks a result from the result screen.
       return { evaluationId, response };
     },
 

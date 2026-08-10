@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
+import { RecommendationList } from '@/components/evaluation/RecommendationList';
+import { ScoreCard } from '@/components/evaluation/ScoreCard';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -8,10 +11,12 @@ import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
 import type { ReviewCard as ReviewCardRow } from '@/db/schema';
+import { useEvaluationResult } from '@/hooks/useEvaluationResult';
 import { useReviewCards } from '@/hooks/useReviewCards';
 
 /**
- * Every due card is listed and can be revealed independently.
+ * Every bookmarked card that is due is listed and can be revealed independently.
+ * Revealing replays the full evaluation, not just the answer sentence.
  * SM-2 grading buttons ("다시 / 어려움 / 보통 / 쉬움") arrive in Phase 6.
  */
 export default function ReviewScreen() {
@@ -37,7 +42,9 @@ export default function ReviewScreen() {
         </Card>
       ) : dueCards.length === 0 ? (
         <Card variant="elevated" style={styles.card}>
-          <Text style={styles.hint}>복습할 카드가 없어요. 문장을 평가하면 카드가 쌓입니다.</Text>
+          <Text style={styles.hint}>
+            복습할 카드가 없어요. 평가 결과에서 «복습에 저장»을 누르면 카드가 쌓입니다.
+          </Text>
         </Card>
       ) : (
         dueCards.map((card, index) => (
@@ -78,32 +85,85 @@ function ReviewFlashcard({
   onToggle: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={
-        revealed ? `${index + 1}번 카드 정답 숨기기` : `${index + 1}번 카드 정답 보기`
-      }
-      accessibilityState={{ expanded: revealed }}
-      onPress={onToggle}
-    >
-      <Card variant="elevated" style={styles.card}>
-        <Text style={styles.counter}>
-          {index + 1} / {total}
-        </Text>
+    <View style={styles.flashcard}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={
+          revealed ? `${index + 1}번 카드 정답 숨기기` : `${index + 1}번 카드 정답 보기`
+        }
+        accessibilityState={{ expanded: revealed }}
+        onPress={onToggle}
+      >
+        <Card variant="elevated" style={styles.card}>
+          <Text style={styles.counter}>
+            {index + 1} / {total}
+          </Text>
 
-        <Text style={styles.korean}>{card.koreanText}</Text>
+          <Text style={styles.korean}>{card.koreanText}</Text>
 
-        {revealed ? (
-          <View style={styles.answer}>
-            <Text style={styles.answerLabel}>정답</Text>
-            <Text style={styles.english}>{card.bestEnglish}</Text>
-            <Text style={styles.hint}>탭해서 정답 숨기기</Text>
-          </View>
-        ) : (
-          <Text style={styles.hint}>탭해서 정답 보기</Text>
-        )}
+          {revealed ? (
+            <View style={styles.answer}>
+              <Text style={styles.answerLabel}>정답</Text>
+              <Text style={styles.english}>{card.bestEnglish}</Text>
+              <Text style={styles.hint}>탭해서 정답 숨기기</Text>
+            </View>
+          ) : (
+            <Text style={styles.hint}>탭해서 정답 보기</Text>
+          )}
+        </Card>
+      </Pressable>
+
+      {revealed && <ReviewEvaluationDetail evaluationId={card.evaluationId} />}
+    </View>
+  );
+}
+
+/** Replays the original evaluation — scores, feedback and every recommendation. */
+function ReviewEvaluationDetail({ evaluationId }: { evaluationId: number }) {
+  const result = useEvaluationResult(evaluationId);
+
+  if (result.isLoading) {
+    return (
+      <View style={styles.detailLoading}>
+        <ActivityIndicator color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (result.isError || !result.data) {
+    return (
+      <Card variant="outlined">
+        <Text style={styles.hint}>평가 내용을 불러오지 못했어요.</Text>
       </Card>
-    </Pressable>
+    );
+  }
+
+  const evaluation = result.data;
+
+  return (
+    <View style={styles.detail}>
+      <ScoreCard
+        naturalness={evaluation.naturalnessScore}
+        grammar={evaluation.grammarScore}
+        meaningClarity={evaluation.meaningClarityScore}
+      />
+
+      <Card variant="outlined">
+        <Text style={styles.detailLabel}>그때 나의 번역</Text>
+        <Text style={styles.detailBody}>{evaluation.input.englishInput}</Text>
+      </Card>
+
+      <FeedbackPanel feedback={evaluation.feedback} />
+
+      <RecommendationList
+        recommendations={evaluation.recommendations.map((rec) => ({
+          sentence: rec.sentence,
+          contextAndNuance: rec.contextAndNuance,
+          koreanTranslation: rec.koreanTranslation,
+          grammarExplanation: rec.grammarExplanation,
+        }))}
+      />
+    </View>
   );
 }
 
@@ -121,6 +181,9 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.headingSemiBold,
     fontSize: FontSizes.base,
     color: Colors.textPrimary,
+  },
+  flashcard: {
+    gap: Spacing.base,
   },
   card: {
     minHeight: 200,
@@ -165,6 +228,25 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     color: Colors.textMuted,
     textAlign: 'center',
+  },
+  detail: {
+    gap: Spacing.base,
+  },
+  detailLoading: {
+    paddingVertical: Spacing.lg,
+    alignItems: 'center',
+  },
+  detailLabel: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: FontSizes.xs,
+    color: Colors.textMuted,
+  },
+  detailBody: {
+    marginTop: Spacing.xs,
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.base,
+    lineHeight: FontSizes.base * 1.5,
+    color: Colors.textPrimary,
   },
   progress: {
     gap: Spacing.sm,

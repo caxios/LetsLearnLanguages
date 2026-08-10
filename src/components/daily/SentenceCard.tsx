@@ -28,23 +28,31 @@ export function SentenceCard({
 }: SentenceCardProps) {
   return (
     <Card
-      variant={isCompleted ? 'outlined' : 'default'}
+      variant="default"
+      style={isCompleted ? styles.completedCard : undefined}
       onPress={onPress}
-      accessibilityLabel={`${DIFFICULTY_LABEL[difficulty]} 문장: ${koreanText}`}
+      accessibilityLabel={`${DIFFICULTY_LABEL[difficulty]} 문장: ${koreanText}${
+        isCompleted ? ' (연습함)' : ''
+      }`}
     >
       <View style={styles.header}>
         <Badge text={DIFFICULTY_LABEL[difficulty]} color={difficultyColor[difficulty]} />
-        {isCompleted && <Text style={styles.done}>✅ 완료</Text>}
+        {isCompleted && <Text style={styles.done}>✅ 연습함</Text>}
       </View>
 
       <Text style={[styles.korean, isCompleted && styles.koreanDone]}>{koreanText}</Text>
 
-      <Text style={styles.action}>{isCompleted ? '결과 보기 →' : '번역하기 →'}</Text>
+      <Text style={styles.action}>{isCompleted ? '다시 풀기 →' : '번역하기 →'}</Text>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
+  completedCard: {
+    // Subtle green wash so practiced sentences read as done at a glance.
+    backgroundColor: Colors.secondaryMuted,
+    borderColor: Colors.success,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

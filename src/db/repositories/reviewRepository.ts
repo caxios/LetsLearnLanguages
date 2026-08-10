@@ -36,6 +36,11 @@ export const reviewRepository = {
       .returning();
   },
 
+  // Remove the card bookmarked for an evaluation (un-bookmarking)
+  async deleteByEvaluationId(evaluationId: number) {
+    return db.delete(reviewCards).where(eq(reviewCards.evaluationId, evaluationId));
+  },
+
   // Update a card after review using SM-2 algorithm results
   async updateAfterReview(
     id: number,

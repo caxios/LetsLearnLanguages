@@ -29,17 +29,10 @@ const dailySentenceSchema: Schema = {
 };
 
 /**
- * Get daily sentences for the given date.
- * If none exist in the database, generate new ones via Gemini and save them.
+ * Ask Gemini for three sentences and append them to the given date.
+ * `avoid` keeps a refresh from handing back sentences the user already has.
  */
-export async function getOrCreateDailySentences(date: string) {
-  // 1. Check local database first
-  const existing = await sentenceRepository.getByDate(date);
-  if (existing.length > 0) {
-    return existing;
-  }
-
-  // 2. Generate new sentences via Gemini
+async function generateAndSave(date: string, avoid: string[]) {
   const apiKey = requireGeminiApiKey();
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -53,7 +46,13 @@ export async function getOrCreateDailySentences(date: string) {
     systemInstruction: DAILY_SENTENCE_SYSTEM_PROMPT,
   });
 
-  const prompt = `Generate 3 daily Korean sentences for today (${date}). Make them interesting and practical.`;
+  const avoidClause = avoid.length
+    ? `\n\nThe user has already practiced the sentences below today. Do NOT repeat them, and do not produce close paraphrases of them:\n${avoid
+        .map((text) => `- ${text}`)
+        .join('\n')}`
+    : '';
+
+  const prompt = `Generate 3 daily Korean sentences for today (${date}). Make them interesting and practical.${avoidClause}`;
 
   const validated = await withRetry(async () => {
     const jsonResponse = await generateJson(model, prompt);
@@ -70,7 +69,6 @@ export async function getOrCreateDailySentences(date: string) {
     return parsed.data;
   });
 
-  // 3. Save to local database
   const sentences = validated.map((s) => ({
     koreanText: s.korean_text,
     difficulty: s.difficulty,
@@ -79,6 +77,32 @@ export async function getOrCreateDailySentences(date: string) {
 
   await sentenceRepository.createMany(sentences);
 
-  // 4. Return the newly created sentences
   return sentenceRepository.getByDate(date);
+}
+
+/**
+ * Get daily sentences for the given date.
+ * If none exist in the database, generate new ones via Gemini and save them.
+ */
+export async function getOrCreateDailySentences(date: string) {
+  // 1. Check local database first
+  const existing = await sentenceRepository.getByDate(date);
+  if (existing.length > 0) {
+    return existing;
+  }
+
+  // 2. Generate new sentences via Gemini and save them
+  return generateAndSave(date, []);
+}
+
+/**
+ * Add three more sentences to a day the user has already been given sentences for.
+ * Nothing is deleted — earlier sentences (and their viewed state) stay put.
+ */
+export async function generateMoreDailySentences(date: string) {
+  const existing = await sentenceRepository.getByDate(date);
+  return generateAndSave(
+    date,
+    existing.map((sentence) => sentence.koreanText)
+  );
 }

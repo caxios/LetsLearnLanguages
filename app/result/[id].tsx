@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
@@ -9,7 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
-import { useAddToReview, useReviewCardForEvaluation } from '@/hooks/useAddToReview';
+import { useReviewCardForEvaluation, useToggleReviewBookmark } from '@/hooks/useAddToReview';
 import { useEvaluationResult } from '@/hooks/useEvaluationResult';
 
 export default function ResultScreen() {
@@ -19,7 +20,7 @@ export default function ResultScreen() {
 
   const result = useEvaluationResult(evaluationId);
   const reviewCard = useReviewCardForEvaluation(evaluationId);
-  const addToReview = useAddToReview();
+  const toggleBookmark = useToggleReviewBookmark();
 
   const handleShare = async () => {
     if (!result.data) return;
@@ -47,7 +48,7 @@ export default function ResultScreen() {
   }
 
   const evaluation = result.data;
-  const alreadyInReview = !!reviewCard.data || addToReview.isSuccess;
+  const bookmarked = !!reviewCard.data;
 
   return (
     <>
@@ -94,12 +95,24 @@ export default function ResultScreen() {
             onPress={() => router.replace('/free-input')}
           />
           <Button
-            title={alreadyInReview ? '복습에 추가됨' : '복습에 추가'}
+            title={bookmarked ? '복습에 저장됨' : '복습에 저장'}
+            variant={bookmarked ? 'secondary' : 'primary'}
             style={styles.action}
-            disabled={alreadyInReview}
-            loading={addToReview.isPending}
+            loading={toggleBookmark.isPending}
+            icon={
+              <SymbolView
+                name={
+                  bookmarked
+                    ? { ios: 'bookmark.fill', android: 'bookmark', web: 'bookmark' }
+                    : { ios: 'bookmark', android: 'bookmark_border', web: 'bookmark_border' }
+                }
+                size={16}
+                tintColor={Colors.textPrimary}
+              />
+            }
             onPress={() =>
-              addToReview.mutate({
+              toggleBookmark.mutate({
+                bookmarked,
                 evaluationId,
                 koreanText: evaluation.input.koreanText,
                 bestEnglish: evaluation.recommendations[0]?.sentence ?? evaluation.input.englishInput,

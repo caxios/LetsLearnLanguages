@@ -10,12 +10,29 @@ export function useReviewCardForEvaluation(evaluationId: number) {
   });
 }
 
-export function useAddToReview() {
+interface BookmarkInput {
+  evaluationId: number;
+  koreanText: string;
+  bestEnglish: string;
+}
+
+/**
+ * Bookmark toggle for the result screen: adds the evaluation to the review deck,
+ * or removes it again if it is already bookmarked.
+ */
+export function useToggleReviewBookmark() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { evaluationId: number; koreanText: string; bestEnglish: string }) =>
-      reviewRepository.create(data),
+    mutationFn: async ({ bookmarked, ...data }: BookmarkInput & { bookmarked: boolean }) => {
+      if (bookmarked) {
+        await reviewRepository.deleteByEvaluationId(data.evaluationId);
+        return false;
+      }
+
+      await reviewRepository.create(data);
+      return true;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviewCards'] });
     },
