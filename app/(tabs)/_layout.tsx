@@ -9,7 +9,7 @@ import { Spacing } from '@/constants/layout';
 const ICONS = {
   home: { ios: 'house.fill', android: 'home', web: 'home' },
   freeInput: { ios: 'square.and.pencil', android: 'edit', web: 'edit' },
-  review: { ios: 'arrow.triangle.2.circlepath', android: 'refresh', web: 'refresh' },
+  review: { ios: 'note.text', android: 'note', web: 'note' },
 } as const;
 
 export default function TabLayout() {
