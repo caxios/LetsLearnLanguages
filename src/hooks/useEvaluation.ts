@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { evaluationRepository } from '@/db/repositories/evaluationRepository';
+import { sentenceRepository } from '@/db/repositories/sentenceRepository';
 import { evaluate } from '@/services/gemini';
 
 interface EvaluationInput {
@@ -41,6 +42,12 @@ export function useEvaluation() {
           grammarExplanation: rec.grammar_explanation,
         })),
       });
+
+      // A daily sentence counts as practiced only once an attempt has been graded —
+      // opening the card is not practice.
+      if (input.dailySentenceId) {
+        await sentenceRepository.markCompleted(input.dailySentenceId);
+      }
 
       // Review cards are opt-in: the user bookmarks a result from the result screen.
       return { evaluationId, response };

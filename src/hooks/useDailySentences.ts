@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
-import { sentenceRepository } from '@/db/repositories/sentenceRepository';
 import { refreshDailyMessage } from '@/services/dailyMessage';
 import { getOrCreateDailySentences, refreshDailySentences } from '@/services/dailySentences';
 
@@ -41,14 +40,3 @@ export function useRefreshDailySentences() {
   });
 }
 
-/** Flag a sentence as seen so the card can show it has been practiced. */
-export function useMarkSentenceViewed() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => sentenceRepository.markCompleted(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dailySentences'] });
-    },
-  });
-}

@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -50,20 +51,24 @@ export function mimeTypeFor(fileName: string): string {
 }
 
 /**
- * React Native uploads `{uri, type, name}` parts natively, but on web that object
- * is stringified — the recording has to be read into a Blob there instead.
+ * Expo SDK 54+ ships a WinterCG `fetch`, and its multipart encoder only accepts
+ * strings and Blob-likes — the classic React Native `{uri, type, name}` part is
+ * rejected with "Unsupported FormDataPart implementation". `File` from
+ * expo-file-system implements Blob, so it uploads without reading the whole
+ * recording into JS memory first. On web the URI is a blob: URL, not a file.
  */
 async function appendRecording(formData: FormData, audioUri: string) {
   const name = fileNameFor(audioUri);
-  const type = mimeTypeFor(name);
 
   if (Platform.OS === 'web') {
     const blob = await (await fetch(audioUri)).blob();
-    formData.append('file', blob, name);
+    // A recorder blob usually carries its own type; fall back to the extension.
+    const typed = blob.type ? blob : new Blob([blob], { type: mimeTypeFor(name) });
+    formData.append('file', typed, name);
     return;
   }
 
-  formData.append('file', { uri: audioUri, type, name } as unknown as Blob);
+  formData.append('file', new File(audioUri) as unknown as Blob);
 }
 
 /**

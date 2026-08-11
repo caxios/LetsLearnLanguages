@@ -15,7 +15,6 @@ import { Spacing } from '@/constants/layout';
 import type { DailySentence } from '@/db/schema';
 import {
   useDailySentences,
-  useMarkSentenceViewed,
   useRefreshDailySentences,
 } from '@/hooks/useDailySentences';
 import { useDailyMessage } from '@/hooks/useDailyMessage';
@@ -28,7 +27,6 @@ export default function HomeScreen() {
   const sentences = useDailySentences();
   const stats = useStats();
   const dailyMessage = useDailyMessage();
-  const markViewed = useMarkSentenceViewed();
   const refreshSentences = useRefreshDailySentences();
 
   // Opening the app counts towards the attendance streak.
@@ -39,11 +37,7 @@ export default function HomeScreen() {
   const setEnglishText = useInputStore((s) => s.setEnglishText);
 
   const handleSentencePress = (sentence: DailySentence) => {
-    // Tapping counts as practiced — the card carries a completed badge from here on.
-    if (!sentence.isCompleted) {
-      markViewed.mutate(sentence.id);
-    }
-
+    // Opening a card is not practice: the completed badge is earned by a graded attempt.
     setKoreanText(sentence.koreanText);
     setDailySentenceId(sentence.id);
     setEnglishText('');
@@ -51,7 +45,7 @@ export default function HomeScreen() {
   };
 
   const today = format(new Date(), 'yyyy년 M월 d일 EEEE', { locale: ko });
-  const viewedCount = (sentences.data ?? []).filter((s) => s.isCompleted).length;
+  const completedCount = (sentences.data ?? []).filter((s) => s.isCompleted).length;
   const totalCount = sentences.data?.length ?? 0;
 
   return (
@@ -92,7 +86,7 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>오늘의 문장</Text>
           {totalCount > 0 && (
             <Text style={styles.progress}>
-              {viewedCount}/{totalCount} 연습함
+              {completedCount}/{totalCount} 연습함
             </Text>
           )}
         </View>
