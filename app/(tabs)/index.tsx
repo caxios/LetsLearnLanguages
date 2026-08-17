@@ -67,7 +67,7 @@ export default function HomeScreen() {
       <Text style={styles.date}>📅 {today}</Text>
 
       {stats.isLoading ? (
-        <Skeleton height={128} borderRadius={16} />
+        <Skeleton height={176} borderRadius={16} />
       ) : (
         <StreakBadge
           streak={stats.data?.streak ?? 0}
