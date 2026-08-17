@@ -25,16 +25,54 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   flac: 'audio/flac',
 };
 
-function messageForStatus(status: number, body: string): string {
+/** OpenAI errors arrive as `{ error: { message, type, code } }`; plain text otherwise. */
+function parseApiError(body: string): { message?: string; type?: string; code?: string } {
+  try {
+    return JSON.parse(body)?.error ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * OpenAI answers a spent account with 429 and `insufficient_quota`, the same
+ * status it uses for real rate limiting. Telling that user to "wait a moment"
+ * sends them into a retry loop that can never succeed, so the two are split.
+ */
+function messageFor429(error: { message?: string; type?: string; code?: string }, retryAfter: string | null): string {
+  const outOfCredit =
+    error.code === 'insufficient_quota' ||
+    error.type === 'insufficient_quota' ||
+    /quota|billing/i.test(error.message ?? '');
+
+  if (outOfCredit) {
+    return 'Your OpenAI account has no credit left, so the transcription was refused. Add billing at platform.openai.com and try again — waiting will not help.';
+  }
+
+  const seconds = Number(retryAfter);
+  return Number.isFinite(seconds) && seconds > 0
+    ? `Too many requests. Please wait about ${Math.ceil(seconds)}s and try again.`
+    : 'Too many requests. Please wait a moment and try again.';
+}
+
+function messageForStatus(status: number, body: string, retryAfter: string | null = null): string {
+  const error = parseApiError(body);
+
   switch (status) {
     case 401:
       return 'Invalid API key. Please check your OpenAI API key in Settings.';
+    case 403:
+      return 'This OpenAI API key is not allowed to use Whisper. Check its permissions in Settings.';
     case 413:
       return 'Recording is too long. Please keep recordings under 25MB.';
     case 429:
-      return 'Too many requests. Please wait a moment and try again.';
+      return messageFor429(error, retryAfter);
+    case 500:
+    case 502:
+    case 503:
+      return 'OpenAI is having trouble right now. Please try again in a moment.';
     default:
-      return `Whisper API error (${status}): ${body}`;
+      return `Whisper API error (${status}): ${error.message ?? body}`;
   }
 }
 
@@ -141,7 +179,11 @@ export async function transcribe(
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => '');
-    throw new Error(messageForStatus(response.status, errorBody));
+    // The mapped copy is deliberately short; keep the provider's own words in the log.
+    console.warn('[whisper] rejected', { status: response.status, body: errorBody.slice(0, 500) });
+    throw new Error(
+      messageForStatus(response.status, errorBody, response.headers?.get?.('retry-after') ?? null)
+    );
   }
 
   const result = await response.json();

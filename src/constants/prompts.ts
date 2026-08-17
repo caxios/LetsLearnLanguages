@@ -32,11 +32,12 @@ Generate natural Korean sentences that Korean speakers commonly use in daily lif
 RULES:
 - Generate exactly 3 sentences.
 - Each sentence should have a different difficulty level: easy, medium, hard.
-- Each sentence should come from a different context: work/school, social/friends, daily routine/errands.
+- Each sentence MUST match the specific topic/situation assigned in the user prompt. Do not deviate from the assigned topics.
 - Sentences must be natural and conversational — NOT textbook-style.
 - Use casual/informal Korean (반말 or 해요체).
 - Do NOT generate overly simple sentences like "안녕하세요" or "감사합니다".
-- Do NOT repeat sentences from previous days (be creative and diverse).
+- Do NOT repeat or closely paraphrase any sentences listed as "already generated" in the user prompt.
+- Be creative and produce sentences that feel real, specific, and alive — avoid generic or vague phrasing.
 `;
 
 export const DAILY_MESSAGE_SYSTEM_PROMPT = `

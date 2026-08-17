@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { dailySentences, userInputs } from '@/db/schema';
@@ -7,6 +7,18 @@ export const sentenceRepository = {
   // Get all sentences for a specific date
   async getByDate(date: string) {
     return db.select().from(dailySentences).where(eq(dailySentences.dateAssigned, date));
+  },
+
+  /**
+   * Return the most recent `limit` sentences across all dates, newest first.
+   * Used to feed the AI prompt so it avoids generating duplicates.
+   */
+  async getRecent(limit: number = 20) {
+    return db
+      .select({ koreanText: dailySentences.koreanText })
+      .from(dailySentences)
+      .orderBy(desc(dailySentences.createdAt), desc(dailySentences.id))
+      .limit(limit);
   },
 
   // Insert new daily sentences
