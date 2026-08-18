@@ -12,6 +12,9 @@ import {
 } from 'react-native';
 
 import { EvaluationDetail, type StoredEvaluation } from '@/components/evaluation/EvaluationDetail';
+import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
+import { AdLoadingOverlay } from '@/components/monetization/AdLoadingOverlay';
+import { QuotaMeter } from '@/components/monetization/QuotaMeter';
 import { InputMethodToggle } from '@/components/input/InputMethodToggle';
 import { KoreanInput } from '@/components/input/KoreanInput';
 import { TextInputField } from '@/components/input/TextInputField';
@@ -21,10 +24,12 @@ import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Colors } from '@/constants/colors';
 import { Features } from '@/constants/features';
+import { evaluationFeatureFor } from '@/constants/monetization';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
 import { useReviewCardForEvaluation, useToggleReviewBookmark } from '@/hooks/useAddToReview';
 import { useEvaluation } from '@/hooks/useEvaluation';
+import { useGatedAction } from '@/hooks/useQuota';
 import { useLatestEvaluationForSentence } from '@/hooks/useEvaluationResult';
 import { useInputStore } from '@/stores/useInputStore';
 import { useRecordingStore } from '@/stores/useRecordingStore';
@@ -38,10 +43,14 @@ export default function FreeInputScreen() {
   const koreanText = useInputStore((s) => s.koreanText);
   const englishText = useInputStore((s) => s.englishText);
   const dailySentenceId = useInputStore((s) => s.dailySentenceId);
+  const source = useInputStore((s) => s.source);
   const setInputMethod = useInputStore((s) => s.setInputMethod);
   const setKoreanText = useInputStore((s) => s.setKoreanText);
   const setEnglishText = useInputStore((s) => s.setEnglishText);
   const reset = useInputStore((s) => s.reset);
+
+  // A topic sentence and a daily sentence share this screen but not their quota.
+  const quota = useGatedAction(evaluationFeatureFor(source));
 
   // The store still carries 'voice' from an earlier session, so the flag —
   // not the stored preference — decides what the screen offers.
@@ -75,13 +84,22 @@ export default function FreeInputScreen() {
     setSubmitError(null);
 
     try {
-      const { evaluationId } = await evaluation.mutateAsync({
-        koreanText: koreanText.trim(),
-        englishText: englishText.trim(),
-        inputMethod: useVoice ? 'voice' : 'text',
-        audioUri: useVoice && audioUri ? audioUri : undefined,
-        dailySentenceId: dailySentenceId ?? undefined,
+      // Quota first, then the ad, then the call — and only then is a try spent.
+      // A dismissed ad or a failed call costs the user nothing.
+      let evaluationId: number | null = null;
+
+      await quota.run(async () => {
+        const result = await evaluation.mutateAsync({
+          koreanText: koreanText.trim(),
+          englishText: englishText.trim(),
+          inputMethod: useVoice ? 'voice' : 'text',
+          audioUri: useVoice && audioUri ? audioUri : undefined,
+          dailySentenceId: dailySentenceId ?? undefined,
+        });
+        evaluationId = result.evaluationId;
       });
+
+      if (evaluationId === null) return;
 
       reset();
       resetRecording();
@@ -107,6 +125,8 @@ export default function FreeInputScreen() {
           <PreviousAttempt evaluation={previous.data!} onRetry={handleRetry} />
         ) : (
           <>
+            <QuotaMeter feature={quota.feature} />
+
             <View style={styles.section}>
               <Text style={styles.label}>나의 영어 번역</Text>
 
@@ -136,7 +156,7 @@ export default function FreeInputScreen() {
               </Card>
             ) : (
               <Button
-                title="✨ 평가 받기"
+                title={quota.showsAd ? '✨ 광고 보고 평가 받기' : '✨ 평가 받기'}
                 size="lg"
                 onPress={handleSubmit}
                 disabled={!canSubmit}
@@ -148,6 +168,9 @@ export default function FreeInputScreen() {
           </>
         )}
       </ScrollView>
+
+      <AdLoadingOverlay visible={quota.isShowingAd} />
+      <QuotaExceededModal {...quota.modal} />
     </KeyboardAvoidingView>
   );
 }

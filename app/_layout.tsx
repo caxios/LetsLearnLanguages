@@ -14,7 +14,9 @@ import '../global.css';
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
 import { DatabaseProvider } from '@/providers/DatabaseProvider';
+import { initializeAds } from '@/services/ads';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { useMonetizationStore } from '@/stores/useMonetizationStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
 export {
@@ -70,11 +72,24 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const loadMonetization = useMonetizationStore((s) => s.loadMonetization);
 
   // Pull API keys out of SecureStore / env before any service reads them.
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  // Quotas start full until this resolves, so a metered action fired in the
+  // first frames is allowed — a rare over-grant beats blocking a paying user.
+  useEffect(() => {
+    loadMonetization();
+  }, [loadMonetization]);
+
+  // Warms the AdMob SDK so the first rewarded ad is not the slowest one. A no-op
+  // wherever the native module is missing.
+  useEffect(() => {
+    initializeAds();
+  }, []);
 
   return (
     <DatabaseProvider>

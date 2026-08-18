@@ -11,6 +11,8 @@ import { Features } from '@/constants/features';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
 import { maintenanceRepository } from '@/db/repositories/maintenanceRepository';
+import { QUOTA_FEATURES, type QuotaFeature } from '@/constants/monetization';
+import { useMonetizationStore, usageForToday } from '@/stores/useMonetizationStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
 export default function SettingsScreen() {
@@ -18,6 +20,11 @@ export default function SettingsScreen() {
 
   const preferredInputMethod = useSettingsStore((s) => s.preferredInputMethod);
   const setPreferredInputMethod = useSettingsStore((s) => s.setPreferredInputMethod);
+
+  const isPremium = useMonetizationStore((s) => s.isPremium);
+  const dailyUsage = useMonetizationStore((s) => s.dailyUsage);
+  const setPremium = useMonetizationStore((s) => s.setPremium);
+  const resetUsage = useMonetizationStore((s) => s.resetUsage);
 
   const [clearing, setClearing] = useState(false);
 
@@ -50,6 +57,30 @@ export default function SettingsScreen() {
           <InputMethodToggle value={preferredInputMethod} onChange={setPreferredInputMethod} />
         </>
       )}
+
+      {/* Phase 1 has no billing yet, so premium is a local switch. Being able to
+          turn it back off is what makes the free limits testable at all. */}
+      <Text style={styles.sectionTitle}>구독 (테스트용)</Text>
+      <Card variant="outlined">
+        <Row label="상태" value={isPremium ? '프리미엄' : '무료'} />
+        {(Object.keys(QUOTA_FEATURES) as QuotaFeature[]).map((feature) => {
+          const { label, limit, countKey, unit } = QUOTA_FEATURES[feature];
+          const used = usageForToday(dailyUsage)[countKey];
+          return (
+            <Row
+              key={feature}
+              label={label}
+              value={isPremium ? '무제한' : `${used}/${limit}${unit}`}
+            />
+          );
+        })}
+      </Card>
+      <Button
+        title={isPremium ? '무료로 되돌리기' : '프리미엄 켜기'}
+        variant="secondary"
+        onPress={() => setPremium(!isPremium)}
+      />
+      <Button title="오늘 사용량 초기화" variant="ghost" onPress={resetUsage} />
 
       <Text style={styles.sectionTitle}>앱 정보</Text>
       <Card variant="outlined">

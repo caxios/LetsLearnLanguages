@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
+import { QuotaMeter } from '@/components/monetization/QuotaMeter';
 import { DailyMessageCard } from '@/components/daily/DailyMessageCard';
 import { DailySentenceList } from '@/components/daily/DailySentenceList';
 import { StatsPanel } from '@/components/daily/StatsPanel';
@@ -19,6 +21,7 @@ import {
 } from '@/hooks/useDailySentences';
 import { useDailyMessage } from '@/hooks/useDailyMessage';
 import { useRecordVisit } from '@/hooks/useRecordVisit';
+import { useGatedAction } from '@/hooks/useQuota';
 import { useStats } from '@/hooks/useStats';
 import { useInputStore } from '@/stores/useInputStore';
 
@@ -28,6 +31,7 @@ export default function HomeScreen() {
   const stats = useStats();
   const dailyMessage = useDailyMessage();
   const refreshSentences = useRefreshDailySentences();
+  const refreshQuota = useGatedAction('dailySentenceRefresh');
 
   // Opening the app counts towards the attendance streak.
   useRecordVisit();
@@ -35,13 +39,21 @@ export default function HomeScreen() {
   const setKoreanText = useInputStore((s) => s.setKoreanText);
   const setDailySentenceId = useInputStore((s) => s.setDailySentenceId);
   const setEnglishText = useInputStore((s) => s.setEnglishText);
+  const setSource = useInputStore((s) => s.setSource);
 
   const handleSentencePress = (sentence: DailySentence) => {
     // Opening a card is not practice: the completed badge is earned by a graded attempt.
     setKoreanText(sentence.koreanText);
     setDailySentenceId(sentence.id);
     setEnglishText('');
+    // Tells the shared input screen which evaluation quota this spends.
+    setSource('daily');
     router.push('/free-input');
+  };
+
+  // Refreshing is metered but not ad-gated — only evaluations carry an ad.
+  const handleRefresh = () => {
+    refreshQuota.run(() => refreshSentences.mutateAsync());
   };
 
   const today = format(new Date(), 'yyyy년 M월 d일 EEEE', { locale: ko });
@@ -96,7 +108,7 @@ export default function HomeScreen() {
           accessibilityLabel="새로운 문장 3개로 바꾸기"
           accessibilityState={{ busy: refreshSentences.isPending }}
           disabled={refreshSentences.isPending}
-          onPress={() => refreshSentences.mutate()}
+          onPress={handleRefresh}
           style={({ pressed }) => [styles.refresh, pressed && styles.refreshPressed]}
         >
           {refreshSentences.isPending ? (
@@ -113,6 +125,8 @@ export default function HomeScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <QuotaMeter feature="dailySentenceRefresh" variant="pill" />
 
       {refreshSentences.isError && (
         <Text style={styles.error}>
@@ -140,6 +154,8 @@ export default function HomeScreen() {
           totalReviews={stats.data?.totalReviews ?? 0}
         />
       )}
+
+      <QuotaExceededModal {...refreshQuota.modal} />
     </ScrollView>
   );
 }

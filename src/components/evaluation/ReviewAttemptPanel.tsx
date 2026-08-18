@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
+import { AdLoadingOverlay } from '@/components/monetization/AdLoadingOverlay';
+import { QuotaMeter } from '@/components/monetization/QuotaMeter';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Colors, scoreColor } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { BorderRadius, Spacing } from '@/constants/layout';
 import type { ReviewAttempt } from '@/db/schema';
+import { useGatedAction } from '@/hooks/useQuota';
 import { useReviewAttempts, useSubmitReviewAttempt } from '@/hooks/useReviewAttempt';
 import { formatAttemptDate } from '@/utils/dates';
 
@@ -29,13 +33,20 @@ export function ReviewAttemptPanel({
   const [draft, setDraft] = useState('');
   const attempts = useReviewAttempts(reviewCardId);
   const submit = useSubmitReviewAttempt();
+  const quota = useGatedAction('reviewEvaluation');
 
   const canSubmit = draft.trim().length > 0 && !submit.isPending;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
+
     try {
-      await submit.mutateAsync({ reviewCardId, koreanText, englishText: draft.trim() });
+      // Quota, then the ad, then the call. The try is spent only on a real score.
+      const scored = await quota.run(() =>
+        submit.mutateAsync({ reviewCardId, koreanText, englishText: draft.trim() })
+      );
+      if (!scored) return;
+
       setDraft('');
       // Scoring is the moment the answer stops being a spoiler.
       onScored?.();
@@ -49,16 +60,23 @@ export function ReviewAttemptPanel({
       <Text style={styles.heading}>✍️ 다시 번역해 보기</Text>
       <Text style={styles.sub}>정답을 보기 전에 먼저 번역해 보세요. 채점하면 정답이 열립니다.</Text>
 
+      <View style={styles.quota}>
+        <QuotaMeter feature="reviewEvaluation" />
+      </View>
+
       <ReviewDraftInput value={draft} onChangeText={setDraft} onSubmit={handleSubmit} />
 
       <Button
-        title="채점하기"
+        title={quota.showsAd ? '광고 보고 채점하기' : '채점하기'}
         size="sm"
         onPress={handleSubmit}
         disabled={!canSubmit}
         loading={submit.isPending}
         style={styles.submit}
       />
+
+      <AdLoadingOverlay visible={quota.isShowingAd} />
+      <QuotaExceededModal {...quota.modal} />
 
       {submit.isError && (
         <Text style={styles.error}>
@@ -160,6 +178,9 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   submit: {
+    marginTop: Spacing.md,
+  },
+  quota: {
     marginTop: Spacing.md,
   },
   error: {

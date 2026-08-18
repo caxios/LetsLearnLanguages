@@ -3,6 +3,8 @@ import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
+import { QuotaMeter } from '@/components/monetization/QuotaMeter';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -11,6 +13,7 @@ import { Colors, difficultyColor } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { BorderRadius, Spacing } from '@/constants/layout';
 import { TOPIC_CATEGORIES, type TopicCategory } from '@/constants/topics';
+import { useGatedAction } from '@/hooks/useQuota';
 import { useTopicSentences } from '@/hooks/useTopicSentences';
 import type { TopicSentence } from '@/services/topicSentences';
 import { useInputStore } from '@/stores/useInputStore';
@@ -28,6 +31,7 @@ const DIFFICULTY_LABEL: Record<TopicSentence['difficulty'], string> = {
 export default function TopicsScreen() {
   const router = useRouter();
   const sentences = useTopicSentences();
+  const quota = useGatedAction('topicPracticeGenerate');
 
   const [category, setCategory] = useState<TopicCategory | null>(null);
   const [topic, setTopic] = useState<string | null>(null);
@@ -35,6 +39,7 @@ export default function TopicsScreen() {
   const setKoreanText = useInputStore((s) => s.setKoreanText);
   const setDailySentenceId = useInputStore((s) => s.setDailySentenceId);
   const setEnglishText = useInputStore((s) => s.setEnglishText);
+  const setSource = useInputStore((s) => s.setSource);
 
   const phase: 'categories' | 'topics' | 'sentences' = topic ? 'sentences' : category ? 'topics' : 'categories';
 
@@ -44,9 +49,20 @@ export default function TopicsScreen() {
     sentences.reset();
   };
 
+  /** One generation = one try, spent only when the sentences actually arrive. */
+  const generate = (next: string) => quota.run(() => sentences.mutateAsync(next));
+
   const openTopic = (next: string) => {
+    // Checked before the phase switches, so a blocked user stays on the list.
+    if (!quota.check()) return;
     setTopic(next);
-    sentences.mutate(next);
+    // mutateAsync rejects on failure; the error surfaces through the mutation.
+    generate(next).catch(() => {});
+  };
+
+  const regenerate = () => {
+    if (!topic) return;
+    generate(topic).catch(() => {});
   };
 
   const goBack = () => {
@@ -64,6 +80,7 @@ export default function TopicsScreen() {
     setKoreanText(sentence.koreanText);
     setDailySentenceId(null);
     setEnglishText('');
+    setSource('topic');
     router.push('/free-input');
   };
 
@@ -98,6 +115,8 @@ export default function TopicsScreen() {
 
       {phase === 'topics' && (
         <View style={styles.topicList}>
+          <QuotaMeter feature="topicPracticeGenerate" />
+
           {category!.topics.map((item) => (
             <Pressable
               key={item}
@@ -122,10 +141,12 @@ export default function TopicsScreen() {
           isPending={sentences.isPending}
           error={sentences.error}
           sentences={sentences.data}
-          onRetry={() => sentences.mutate(topic!)}
+          onRetry={regenerate}
           onSentencePress={handleSentencePress}
         />
       )}
+
+      <QuotaExceededModal {...quota.modal} />
     </ScrollView>
   );
 }

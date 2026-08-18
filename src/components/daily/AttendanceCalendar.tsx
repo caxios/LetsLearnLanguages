@@ -192,16 +192,21 @@ export function AttendanceCalendar({ activeDates, today }: AttendanceCalendarPro
             accessibilityLabel={toggleLabel}
             accessibilityState={{ expanded: false }}
             onPress={handleToggle}
-            style={({ pressed }) => [styles.week, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.weekPress, pressed && styles.pressed]}
           >
-            {calendar.week.map((day) => (
-              <View key={day.date} style={styles.weekDay}>
-                <DayCell day={day} compact />
-                <Text style={[styles.weekdayLabel, day.isToday && styles.weekdayLabelToday]}>
-                  {WEEKDAY_LABELS[day.weekday]}
-                </Text>
-              </View>
-            ))}
+            {/* The row lives on a plain View, not on the Pressable itself —
+                the same shape the month grid below uses, and the same shape
+                Card uses for its press target. */}
+            <View style={styles.week}>
+              {calendar.week.map((day) => (
+                <View key={day.date} style={styles.weekDay}>
+                  <DayCell day={day} compact />
+                  <Text style={[styles.weekdayLabel, day.isToday && styles.weekdayLabelToday]}>
+                    {WEEKDAY_LABELS[day.weekday]}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </Pressable>
         )}
 
@@ -284,7 +289,7 @@ export function AttendanceCalendar({ activeDates, today }: AttendanceCalendarPro
             </View>
           </View>
         )}
-        </Animated.View>
+      </Animated.View>
 
       <View style={styles.footer}>
         <Text style={styles.summary}>
@@ -349,11 +354,18 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
 
+  /** Touch target only — it must not carry the row, or it has none of its own. */
+  weekPress: {
+    alignSelf: 'stretch',
+  },
   week: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   weekDay: {
+    // Seven fixed columns, exactly like `gridCell`. `flex: 1` measures to zero
+    // here because the strip has no intrinsic width to divide up.
+    width: `${100 / 7}%`,
     alignItems: 'center',
     gap: Spacing.xs,
   },
