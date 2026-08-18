@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Colors } from '@/constants/colors';
+import { Features } from '@/constants/features';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
 import { useReviewCardForEvaluation, useToggleReviewBookmark } from '@/hooks/useAddToReview';
@@ -41,6 +42,10 @@ export default function FreeInputScreen() {
   const setKoreanText = useInputStore((s) => s.setKoreanText);
   const setEnglishText = useInputStore((s) => s.setEnglishText);
   const reset = useInputStore((s) => s.reset);
+
+  // The store still carries 'voice' from an earlier session, so the flag —
+  // not the stored preference — decides what the screen offers.
+  const useVoice = Features.VOICE_INPUT_ENABLED && inputMethod === 'voice';
 
   const audioUri = useRecordingStore((s) => s.audioUri);
   const resetRecording = useRecordingStore((s) => s.resetRecording);
@@ -73,8 +78,8 @@ export default function FreeInputScreen() {
       const { evaluationId } = await evaluation.mutateAsync({
         koreanText: koreanText.trim(),
         englishText: englishText.trim(),
-        inputMethod,
-        audioUri: inputMethod === 'voice' && audioUri ? audioUri : undefined,
+        inputMethod: useVoice ? 'voice' : 'text',
+        audioUri: useVoice && audioUri ? audioUri : undefined,
         dailySentenceId: dailySentenceId ?? undefined,
       });
 
@@ -105,15 +110,19 @@ export default function FreeInputScreen() {
             <View style={styles.section}>
               <Text style={styles.label}>나의 영어 번역</Text>
 
-              <InputMethodToggle value={inputMethod} onChange={setInputMethod} />
+              {/* Voice input is behind a flag while Whisper is switched off; with
+                  it false this collapses to the plain text field. */}
+              {Features.VOICE_INPUT_ENABLED && (
+                <InputMethodToggle value={inputMethod} onChange={setInputMethod} />
+              )}
 
-              {inputMethod === 'voice' ? (
+              {useVoice ? (
                 <VoiceRecorder />
               ) : (
                 <TextInputField value={englishText} onChangeText={setEnglishText} />
               )}
 
-              {inputMethod === 'voice' && englishText.length > 0 && (
+              {useVoice && englishText.length > 0 && (
                 <TextInputField value={englishText} onChangeText={setEnglishText} />
               )}
             </View>

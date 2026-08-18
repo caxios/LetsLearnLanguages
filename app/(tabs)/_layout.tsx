@@ -9,6 +9,7 @@ import { Spacing } from '@/constants/layout';
 const ICONS = {
   home: { ios: 'house.fill', android: 'home', web: 'home' },
   freeInput: { ios: 'square.and.pencil', android: 'edit', web: 'edit' },
+  topics: { ios: 'text.book.closed.fill', android: 'menu_book', web: 'menu_book' },
   review: { ios: 'note.text', android: 'note', web: 'note' },
 } as const;
 
@@ -72,6 +73,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <SymbolView name={ICONS.freeInput} size={26} tintColor={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="topics"
+        options={{
+          title: '주제별 연습',
+          tabBarIcon: ({ color }) => <SymbolView name={ICONS.topics} size={26} tintColor={color} />,
         }}
       />
       <Tabs.Screen

@@ -115,21 +115,26 @@ function getModel(): GenerativeModel {
 }
 
 /**
- * Run a prompt and parse the JSON body out of the response.
+ * Run a prompt and hand back the raw response text.
  * Transport failures become `ApiResponseError` so `withRetry` can decide what is retryable.
  */
-export async function generateJson(model: GenerativeModel, prompt: string): Promise<unknown> {
-  let responseText: string;
-
+export async function generateText(model: GenerativeModel, prompt: string): Promise<string> {
   try {
     const result = await model.generateContent(prompt);
-    responseText = result.response.text();
+    return result.response.text();
   } catch (error) {
     if (error instanceof GoogleGenerativeAIFetchError) {
       throw new ApiResponseError('Gemini', error.status ?? 0, error.message);
     }
     throw error;
   }
+}
+
+/**
+ * Run a prompt and parse the JSON body out of the response.
+ */
+export async function generateJson(model: GenerativeModel, prompt: string): Promise<unknown> {
+  const responseText = await generateText(model, prompt);
 
   try {
     return JSON.parse(responseText);

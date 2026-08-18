@@ -7,6 +7,7 @@ import { InputMethodToggle } from '@/components/input/InputMethodToggle';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Colors } from '@/constants/colors';
+import { Features } from '@/constants/features';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
 import { maintenanceRepository } from '@/db/repositories/maintenanceRepository';
@@ -43,8 +44,12 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>기본 입력 방식</Text>
-      <InputMethodToggle value={preferredInputMethod} onChange={setPreferredInputMethod} />
+      {Features.VOICE_INPUT_ENABLED && (
+        <>
+          <Text style={styles.sectionTitle}>기본 입력 방식</Text>
+          <InputMethodToggle value={preferredInputMethod} onChange={setPreferredInputMethod} />
+        </>
+      )}
 
       <Text style={styles.sectionTitle}>앱 정보</Text>
       <Card variant="outlined">
