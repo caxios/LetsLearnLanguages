@@ -3,7 +3,7 @@ import { StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
 
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
-import { parseGrammarTags } from '@/utils/grammarTags';
+import { autoTagKnownTerms, parseGrammarTags } from '@/utils/grammarTags';
 
 interface GrammarTextProps {
   children: string;
@@ -20,7 +20,15 @@ interface GrammarTextProps {
  * inert — the sentence reads the same either way.
  */
 export function GrammarText({ children, style, onTermPress }: GrammarTextProps) {
-  const segments = useMemo(() => parseGrammarTags(children), [children]);
+  const segments = useMemo(() => {
+    const tagged = parseGrammarTags(children);
+    if (tagged.some((segment) => segment.term)) return tagged;
+
+    // Nothing tagged: either the model named no grammar, or this text was stored
+    // before tagging existed. Fall back to the known-terms dictionary so older
+    // evaluations get links too.
+    return parseGrammarTags(autoTagKnownTerms(children));
+  }, [children]);
 
   return (
     <Text style={style}>

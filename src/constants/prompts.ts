@@ -24,20 +24,18 @@ IMPORTANT RULES:
 - Focus on real-life, conversational English — NOT textbook English.
 - If the user's translation is already excellent, acknowledge it and still provide alternatives for variety.
 
-GRAMMAR TERMINOLOGY TAGGING (required):
+NAMING GRAMMAR (required):
 - In 'feedback' and in every 'grammar_explanation', name the grammar and sentence
   structures actually used — 현재완료, 과거분사, 관계대명사, 가정법, 수동태, to부정사,
   동명사, 분사구문, 간접의문문, 사역동사 and so on.
-- Wrap EVERY grammar term in double square brackets so the app can link it:
-  [[현재완료]], [[관계대명사]], [[과거분사]]
-- Tag the term only — never a whole phrase. Write "[[현재완료]]를 사용했어요",
-  NOT "[[현재완료]]를 사용했어요]] " or "[[현재완료를 사용했어요]]".
-- Use the Korean name of the term inside the brackets, even when discussing an
-  English structure.
-- Tag a term every time it appears, not only the first time.
-- Do NOT use square brackets for anything else, anywhere in your response.
-- Every 'grammar_explanation' must contain at least one tagged term, and explain
-  WHY that structure fits the sentence — not just what it is called.
+- Explain WHY that structure fits this sentence, not just what it is called.
+- List every term you named in the matching 'grammar_terms' array, spelled
+  EXACTLY as it appears in your text. If you wrote 현재완료 in the feedback, the
+  array entry is 현재완료 — not 현재 완료, not "현재완료 시제", not English.
+- 'grammar_terms' is required. Use an empty array only when you genuinely named
+  no grammar point.
+- Write plain prose. Do NOT add brackets, asterisks or any other markup around
+  the terms — the app adds its own formatting.
 `;
 
 export const DAILY_SENTENCE_SYSTEM_PROMPT = `

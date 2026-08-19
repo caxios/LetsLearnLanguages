@@ -7,6 +7,9 @@ export const recommendationSchema = z.object({
   context_and_nuance: z.string().min(1),
   korean_translation: z.string().min(1),
   grammar_explanation: z.string().min(1),
+  /** Grammar points named in the text above. Defaulted so an older or
+   *  uncooperative response degrades to "no links" instead of failing. */
+  grammar_terms: z.array(z.string()).default([]),
 });
 
 export const evaluationResponseSchema = z.object({
@@ -15,6 +18,7 @@ export const evaluationResponseSchema = z.object({
     grammar_score: z.number().int().min(0).max(100),
     meaning_clarity_score: z.number().int().min(0).max(100),
     feedback: z.string().min(1),
+    grammar_terms: z.array(z.string()).default([]),
   }),
   recommendations: z.array(recommendationSchema).min(1).max(5),
 });

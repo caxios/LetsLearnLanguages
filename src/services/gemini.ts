@@ -15,6 +15,7 @@ import {
   type ScoreOnlyResponse,
 } from '@/types/evaluation';
 import { ApiKeyMissingError, ApiResponseError, ValidationError, withRetry } from '@/utils/errors';
+import { applyGrammarTags, autoTagKnownTerms } from '@/utils/grammarTags';
 
 export const GEMINI_MODEL = 'gemini-2.5-flash';
 
@@ -39,10 +40,22 @@ const evaluationSchema: Schema = {
         },
         feedback: {
           type: SchemaType.STRING,
-          description: 'Overall feedback written in Korean. You MUST wrap ALL grammar terms in double brackets, e.g. [[현재완료]].',
+          description: 'Overall feedback written in Korean',
+        },
+        grammar_terms: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+          description:
+            'Korean names of every grammar point named in `feedback`, spelled exactly as they appear there (예: 현재완료, 관계대명사). Empty array if none.',
         },
       },
-      required: ['naturalness_score', 'grammar_score', 'meaning_clarity_score', 'feedback'],
+      required: [
+        'naturalness_score',
+        'grammar_score',
+        'meaning_clarity_score',
+        'feedback',
+        'grammar_terms',
+      ],
     },
     recommendations: {
       type: SchemaType.ARRAY,
@@ -64,7 +77,13 @@ const evaluationSchema: Schema = {
           },
           grammar_explanation: {
             type: SchemaType.STRING,
-            description: 'Grammar explanation in Korean. You MUST wrap ALL grammar terms in double brackets, e.g. [[현재완료]].',
+            description: 'Grammar explanation in Korean',
+          },
+          grammar_terms: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+            description:
+              'Korean names of every grammar point named in `grammar_explanation` or `context_and_nuance`, spelled exactly as they appear there. Empty array if none.',
           },
         },
         required: [
@@ -72,6 +91,7 @@ const evaluationSchema: Schema = {
           'context_and_nuance',
           'korean_translation',
           'grammar_explanation',
+          'grammar_terms',
         ],
       },
     },
@@ -172,8 +192,34 @@ Please evaluate this translation and provide recommended alternatives.
       );
     }
 
-    return validated.data;
+    return tagGrammarTerms(validated.data);
   });
+}
+
+/**
+ * Turn the reported term list into `[[tags]]` the UI can linkify.
+ *
+ * Done here rather than asked of the model: a schema-required array is enforced
+ * by constrained decoding, whereas markup inside a string value is only a hint
+ * and gets dropped. Anything the model missed falls back to the known-terms
+ * dictionary, so feedback still links even when the array comes back empty.
+ */
+function tagGrammarTerms(response: EvaluationResponse): EvaluationResponse {
+  const tag = (text: string, terms: string[]) =>
+    terms.length > 0 ? applyGrammarTags(text, terms) : autoTagKnownTerms(text);
+
+  return {
+    ...response,
+    evaluation: {
+      ...response.evaluation,
+      feedback: tag(response.evaluation.feedback, response.evaluation.grammar_terms),
+    },
+    recommendations: response.recommendations.map((rec) => ({
+      ...rec,
+      context_and_nuance: tag(rec.context_and_nuance, rec.grammar_terms),
+      grammar_explanation: tag(rec.grammar_explanation, rec.grammar_terms),
+    })),
+  };
 }
 
 // --- Lightweight review scoring -------------------------------------------
