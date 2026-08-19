@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { desc, eq, inArray, sql } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { evaluations, recommendations, userInputs } from '@/db/schema';
@@ -155,6 +155,27 @@ export const evaluationRepository = {
       .limit(1);
 
     return rows[0]?.id ?? null;
+  },
+
+  /**
+   * Which of `koreanTexts` the user has already had graded.
+   *
+   * Topic practice sentences are generated on demand and never stored, so they
+   * have no id to look up — the Korean text is the only stable handle they have.
+   * Matching on it also means a sentence counts as practiced however it was
+   * reached, and the status survives regenerating the topic.
+   */
+  async findCompletedKoreanTexts(koreanTexts: string[]): Promise<string[]> {
+    // `inArray` with an empty list builds invalid SQL, and there is nothing to ask.
+    if (koreanTexts.length === 0) return [];
+
+    const rows = await db
+      .select({ koreanText: userInputs.koreanText })
+      .from(evaluations)
+      .innerJoin(userInputs, eq(evaluations.userInputId, userInputs.id))
+      .where(inArray(userInputs.koreanText, koreanTexts));
+
+    return [...new Set(rows.map((row) => row.koreanText))];
   },
 
   // Get recent evaluations (for history/activity feed)

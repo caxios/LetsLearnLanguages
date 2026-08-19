@@ -59,6 +59,8 @@ export function useEvaluation() {
       queryClient.invalidateQueries({ queryKey: ['recentEvaluations'] });
       // Re-opening the sentence must show this attempt, not the one before it.
       queryClient.invalidateQueries({ queryKey: ['evaluation', 'forSentence'] });
+      // Topic practice derives its "practiced" badge from graded Korean text.
+      queryClient.invalidateQueries({ queryKey: ['completedSentences'] });
       queryClient.invalidateQueries({ queryKey: ['reviewCards'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
     },

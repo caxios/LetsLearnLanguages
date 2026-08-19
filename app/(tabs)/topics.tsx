@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
@@ -13,6 +13,7 @@ import { Colors, difficultyColor } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { BorderRadius, Spacing } from '@/constants/layout';
 import { TOPIC_CATEGORIES, type TopicCategory } from '@/constants/topics';
+import { useCompletedSentences } from '@/hooks/useCompletedSentences';
 import { useGatedAction } from '@/hooks/useQuota';
 import { useTopicSentences } from '@/hooks/useTopicSentences';
 import type { TopicSentence } from '@/services/topicSentences';
@@ -32,6 +33,12 @@ export default function TopicsScreen() {
   const router = useRouter();
   const sentences = useTopicSentences();
   const quota = useGatedAction('topicPracticeGenerate');
+
+  const koreanTexts = useMemo(
+    () => (sentences.data ?? []).map((sentence) => sentence.koreanText),
+    [sentences.data]
+  );
+  const { completed } = useCompletedSentences(koreanTexts);
 
   const [category, setCategory] = useState<TopicCategory | null>(null);
   const [topic, setTopic] = useState<string | null>(null);
@@ -141,6 +148,7 @@ export default function TopicsScreen() {
           isPending={sentences.isPending}
           error={sentences.error}
           sentences={sentences.data}
+          completed={completed}
           onRetry={regenerate}
           onSentencePress={handleSentencePress}
         />
@@ -190,12 +198,14 @@ function SentencePhase({
   isPending,
   error,
   sentences,
+  completed,
   onRetry,
   onSentencePress,
 }: {
   isPending: boolean;
   error: Error | null;
   sentences: TopicSentence[] | undefined;
+  completed: Set<string>;
   onRetry: () => void;
   onSentencePress: (sentence: TopicSentence) => void;
 }) {
@@ -223,28 +233,46 @@ function SentencePhase({
     return null;
   }
 
+  const doneCount = sentences.filter((sentence) => completed.has(sentence.koreanText)).length;
+
   return (
     <View style={styles.sentenceList}>
-      {sentences.map((sentence, index) => (
-        <Card
-          key={`${index}-${sentence.koreanText}`}
-          onPress={() => onSentencePress(sentence)}
-          accessibilityLabel={`${DIFFICULTY_LABEL[sentence.difficulty]} 문장: ${sentence.koreanText}`}
-        >
-          <View style={styles.sentenceHeader}>
-            <Badge
-              text={DIFFICULTY_LABEL[sentence.difficulty]}
-              color={difficultyColor[sentence.difficulty]}
-            />
-            {/* The one sentence written from a live search, so the user knows why
-                it mentions something this week. */}
-            {sentence.isGrounded && <Badge text="🔍 트렌드" color={Colors.info} />}
-          </View>
+      <Text style={styles.progress}>
+        {doneCount}/{sentences.length} 연습함
+      </Text>
 
-          <Text style={styles.korean}>{sentence.koreanText}</Text>
-          <Text style={styles.action}>번역하기 →</Text>
-        </Card>
-      ))}
+      {sentences.map((sentence, index) => {
+        const isDone = completed.has(sentence.koreanText);
+
+        return (
+          <Card
+            key={`${index}-${sentence.koreanText}`}
+            style={isDone ? styles.doneCard : undefined}
+            onPress={() => onSentencePress(sentence)}
+            accessibilityLabel={`${DIFFICULTY_LABEL[sentence.difficulty]} 문장: ${
+              sentence.koreanText
+            }${isDone ? ' (연습함)' : ''}`}
+          >
+            <View style={styles.sentenceHeader}>
+              <Badge
+                text={DIFFICULTY_LABEL[sentence.difficulty]}
+                color={difficultyColor[sentence.difficulty]}
+              />
+              {/* The one sentence written from a live search, so the user knows why
+                  it mentions something this week. */}
+              {sentence.isGrounded && <Badge text="🔍 트렌드" color={Colors.info} />}
+              {isDone && <Text style={styles.done}>✅ 연습함</Text>}
+            </View>
+
+            <Text style={[styles.korean, isDone && styles.koreanDone]}>
+              {sentence.koreanText}
+            </Text>
+            {/* Topic sentences are not stored, so there is no past result to
+                re-open — tapping one always starts a fresh attempt. */}
+            <Text style={styles.action}>{isDone ? '다시 번역하기 →' : '번역하기 →'}</Text>
+          </Card>
+        );
+      })}
 
       <Button title="다른 문장 받기" variant="secondary" onPress={onRetry} />
     </View>
@@ -375,6 +403,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     marginBottom: Spacing.md,
+  },
+  progress: {
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.xs,
+    color: Colors.textMuted,
+  },
+  doneCard: {
+    // Same green wash the daily sentence cards use when practiced.
+    backgroundColor: Colors.secondaryMuted,
+    borderColor: Colors.success,
+  },
+  done: {
+    marginLeft: 'auto',
+    fontFamily: Fonts.bodyMedium,
+    fontSize: FontSizes.xs,
+    color: Colors.success,
+  },
+  koreanDone: {
+    color: Colors.textSecondary,
   },
   korean: {
     fontFamily: Fonts.headingSemiBold,
