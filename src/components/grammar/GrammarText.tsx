@@ -8,8 +8,12 @@ import { autoTagKnownTerms, parseGrammarTags } from '@/utils/grammarTags';
 interface GrammarTextProps {
   children: string;
   style?: StyleProp<TextStyle>;
-  /** Omit to render the terms as plain text — used where a sheet cannot open. */
-  onTermPress?: (term: string) => void;
+  /**
+    * Required on purpose. Making it optional meant a screen that forgot to pass
+    * it rendered terms as ordinary text and looked exactly like feedback with no
+    * grammar in it — a failure with no symptom. Now the compiler catches it.
+    */
+  onTermPress: (term: string) => void;
 }
 
 /**
@@ -33,7 +37,7 @@ export function GrammarText({ children, style, onTermPress }: GrammarTextProps) 
   return (
     <Text style={style}>
       {segments.map((segment, index) =>
-        segment.term && onTermPress ? (
+        segment.term ? (
           <Text
             key={index}
             accessibilityRole="link"

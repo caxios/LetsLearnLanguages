@@ -24,7 +24,7 @@ interface RecommendationItem {
 interface RecommendationListProps {
   recommendations: RecommendationItem[];
   /** Opens the Grammar Teacher for a tagged term. */
-  onTermPress?: (term: string) => void;
+  onTermPress: (term: string) => void;
 }
 
 type SectionKey = 'nuance' | 'translation' | 'grammar';
@@ -57,7 +57,7 @@ function RecommendationCard({
 }: {
   recommendation: RecommendationItem;
   delay: number;
-  onTermPress?: (term: string) => void;
+  onTermPress: (term: string) => void;
 }) {
   // Sections open independently so nuance, translation and grammar can be read together.
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
@@ -130,6 +130,7 @@ function RecommendationCard({
             bodyStyle={styles.translationBody}
             expanded={openSections.translation}
             onToggle={() => toggle('translation')}
+            onTermPress={onTermPress}
           />
         ) : null}
 
@@ -158,7 +159,7 @@ function Section({
   expanded: boolean;
   onToggle: () => void;
   bodyStyle?: object;
-  onTermPress?: (term: string) => void;
+  onTermPress: (term: string) => void;
 }) {
   return (
     <View style={styles.section}>

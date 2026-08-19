@@ -9,8 +9,8 @@ import { Spacing } from '@/constants/layout';
 
 interface FeedbackPanelProps {
   feedback: string;
-  /** Opens the Grammar Teacher for a tagged term. Omit to render terms inert. */
-  onTermPress?: (term: string) => void;
+  /** Opens the Grammar Teacher for a tagged term. */
+  onTermPress: (term: string) => void;
 }
 
 export function FeedbackPanel({ feedback, onTermPress }: FeedbackPanelProps) {

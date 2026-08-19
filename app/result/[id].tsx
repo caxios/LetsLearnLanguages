@@ -1,10 +1,12 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
 import { RecommendationList } from '@/components/evaluation/RecommendationList';
 import { ScoreCard } from '@/components/evaluation/ScoreCard';
+import { GrammarTeacherModal } from '@/components/grammar/GrammarTeacherModal';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Colors } from '@/constants/colors';
@@ -19,6 +21,8 @@ export default function ResultScreen() {
   const evaluationId = Number(id);
 
   const result = useEvaluationResult(evaluationId);
+  // Tapping a grammar term in the feedback opens the Grammar Teacher sheet.
+  const [term, setTerm] = useState<string | null>(null);
   const reviewCard = useReviewCardForEvaluation(evaluationId);
   const toggleBookmark = useToggleReviewBookmark();
 
@@ -76,7 +80,7 @@ export default function ResultScreen() {
           <Text style={styles.original}>{evaluation.input.englishInput}</Text>
         </Card>
 
-        <FeedbackPanel feedback={evaluation.feedback} />
+        <FeedbackPanel feedback={evaluation.feedback} onTermPress={setTerm} />
 
         <RecommendationList
           recommendations={evaluation.recommendations.map((rec) => ({
@@ -85,6 +89,7 @@ export default function ResultScreen() {
             koreanTranslation: rec.koreanTranslation,
             grammarExplanation: rec.grammarExplanation,
           }))}
+          onTermPress={setTerm}
         />
 
         <View style={styles.actions}>
@@ -121,6 +126,12 @@ export default function ResultScreen() {
           />
         </View>
       </ScrollView>
+
+      <GrammarTeacherModal
+        term={term}
+        context={evaluation.input.koreanText}
+        onClose={() => setTerm(null)}
+      />
     </>
   );
 }
