@@ -39,7 +39,7 @@ const evaluationSchema: Schema = {
         },
         feedback: {
           type: SchemaType.STRING,
-          description: 'Overall feedback written in Korean',
+          description: 'Overall feedback written in Korean. You MUST wrap ALL grammar terms in double brackets, e.g. [[현재완료]].',
         },
       },
       required: ['naturalness_score', 'grammar_score', 'meaning_clarity_score', 'feedback'],
@@ -64,7 +64,7 @@ const evaluationSchema: Schema = {
           },
           grammar_explanation: {
             type: SchemaType.STRING,
-            description: 'Grammar explanation in Korean',
+            description: 'Grammar explanation in Korean. You MUST wrap ALL grammar terms in double brackets, e.g. [[현재완료]].',
           },
         },
         required: [
