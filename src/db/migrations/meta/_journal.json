@@ -36,6 +36,13 @@
       "when": 1786358801480,
       "tag": "0004_boring_the_santerians",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787146591651,
+      "tag": "0005_clean_boom_boom",
+      "breakpoints": true
     }
   ]
 }

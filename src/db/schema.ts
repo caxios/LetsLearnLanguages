@@ -106,6 +106,26 @@ export const dailyMessages = sqliteTable('daily_messages', {
     .default(sql`(datetime('now'))`),
 });
 
+/**
+ * A grammar point the user saved from the Grammar Teacher, kept as reading
+ * material rather than a drill.
+ *
+ * Deliberately not a `reviewCards` row: those carry a NOT NULL evaluation link
+ * and SM-2 scheduling columns, none of which mean anything for a concept the
+ * user only ever re-reads. `term` is unique so saving the same point twice
+ * refreshes the note instead of stacking duplicates.
+ */
+export const grammarNotes = sqliteTable('grammar_notes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  term: text('term').notNull().unique(),
+  summary: text('summary').notNull(),
+  /** The full explanation, stored as JSON so the modal can re-render it whole. */
+  detailJson: text('detail_json').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export type DailySentence = typeof dailySentences.$inferSelect;
 export type NewDailySentence = typeof dailySentences.$inferInsert;
 export type UserInput = typeof userInputs.$inferSelect;
@@ -118,5 +138,7 @@ export type ReviewCard = typeof reviewCards.$inferSelect;
 export type NewReviewCard = typeof reviewCards.$inferInsert;
 export type AppVisit = typeof appVisits.$inferSelect;
 export type ReviewAttempt = typeof reviewAttempts.$inferSelect;
+export type GrammarNote = typeof grammarNotes.$inferSelect;
+export type NewGrammarNote = typeof grammarNotes.$inferInsert;
 export type NewReviewAttempt = typeof reviewAttempts.$inferInsert;
 export type DailyMessage = typeof dailyMessages.$inferSelect;

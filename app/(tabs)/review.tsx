@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { EvaluationDetail } from '@/components/evaluation/EvaluationDetail';
+import { GrammarNoteCard } from '@/components/grammar/GrammarNoteCard';
 import { ReviewAttemptPanel } from '@/components/evaluation/ReviewAttemptPanel';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -19,6 +20,7 @@ import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
 import type { ReviewCard as ReviewCardRow } from '@/db/schema';
+import { useDeleteGrammarNote, useGrammarNotes } from '@/hooks/useGrammar';
 import { useEvaluationResult } from '@/hooks/useEvaluationResult';
 import { useDeleteReviewCard, useReviewCards } from '@/hooks/useReviewCards';
 
@@ -32,6 +34,8 @@ import { useDeleteReviewCard, useReviewCards } from '@/hooks/useReviewCards';
 export default function ReviewScreen() {
   const cards = useReviewCards();
   const deleteCard = useDeleteReviewCard();
+  const grammarNotes = useGrammarNotes();
+  const deleteGrammarNote = useDeleteGrammarNote();
   const [revealed, setRevealed] = useState<Record<number, boolean>>({});
 
   const dueCards = useMemo(() => cards.data ?? [], [cards.data]);
@@ -39,6 +43,13 @@ export default function ReviewScreen() {
 
   const toggle = (id: number) => setRevealed((current) => ({ ...current, [id]: !current[id] }));
   const reveal = (id: number) => setRevealed((current) => ({ ...current, [id]: true }));
+
+  const confirmDeleteNote = (id: number, term: string) => {
+    Alert.alert('이 문법 노트를 삭제할까요?', `«${term}» 노트가 복습 목록에서 사라져요.`, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => deleteGrammarNote.mutate(id) },
+    ]);
+  };
 
   const confirmDelete = (card: ReviewCardRow) => {
     Alert.alert(
@@ -65,6 +76,23 @@ export default function ReviewScreen() {
         <Skeleton height={20} width="60%" />
       ) : (
         <Text style={styles.due}>오늘 복습할 카드: {dueCards.length}장</Text>
+      )}
+
+      {(grammarNotes.data?.length ?? 0) > 0 && (
+        <View style={styles.grammarSection}>
+          <Text style={styles.sectionTitle}>📘 문법 노트</Text>
+          <Text style={styles.sectionHint}>
+            번역 없이 읽기만 하면 되는 카드예요. 언제든 다시 펼쳐 보세요.
+          </Text>
+
+          {grammarNotes.data!.map((note) => (
+            <GrammarNoteCard
+              key={note.id}
+              note={note}
+              onDelete={() => confirmDeleteNote(note.id, note.term)}
+            />
+          ))}
+        </View>
       )}
 
       {cards.isLoading ? (
@@ -218,6 +246,20 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.headingSemiBold,
     fontSize: FontSizes.base,
     color: Colors.textPrimary,
+  },
+  grammarSection: {
+    gap: Spacing.md,
+  },
+  sectionTitle: {
+    fontFamily: Fonts.heading,
+    fontSize: FontSizes.lg,
+    color: Colors.textPrimary,
+  },
+  sectionHint: {
+    marginTop: -Spacing.sm,
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.xs,
+    color: Colors.textMuted,
   },
   flashcard: {
     gap: Spacing.base,

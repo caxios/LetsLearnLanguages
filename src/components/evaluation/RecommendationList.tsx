@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
 
+import { GrammarText } from '@/components/grammar/GrammarText';
 import { Card } from '@/components/ui/Card';
 import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
@@ -22,13 +23,18 @@ interface RecommendationItem {
 
 interface RecommendationListProps {
   recommendations: RecommendationItem[];
+  /** Opens the Grammar Teacher for a tagged term. */
+  onTermPress?: (term: string) => void;
 }
 
 type SectionKey = 'nuance' | 'translation' | 'grammar';
 
 const STAGGER_MS = 100;
 
-export function RecommendationList({ recommendations }: RecommendationListProps) {
+export function RecommendationList({
+  recommendations,
+  onTermPress,
+}: RecommendationListProps) {
   return (
     <View style={styles.list}>
       <Text style={styles.heading}>💡 추천 표현</Text>
@@ -37,6 +43,7 @@ export function RecommendationList({ recommendations }: RecommendationListProps)
           key={`${recommendation.sentence}-${index}`}
           recommendation={recommendation}
           delay={index * STAGGER_MS}
+          onTermPress={onTermPress}
         />
       ))}
     </View>
@@ -46,9 +53,11 @@ export function RecommendationList({ recommendations }: RecommendationListProps)
 function RecommendationCard({
   recommendation,
   delay,
+  onTermPress,
 }: {
   recommendation: RecommendationItem;
   delay: number;
+  onTermPress?: (term: string) => void;
 }) {
   // Sections open independently so nuance, translation and grammar can be read together.
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
@@ -111,6 +120,7 @@ function RecommendationCard({
           body={recommendation.contextAndNuance}
           expanded={openSections.nuance}
           onToggle={() => toggle('nuance')}
+          onTermPress={onTermPress}
         />
 
         {recommendation.koreanTranslation ? (
@@ -128,6 +138,7 @@ function RecommendationCard({
           body={recommendation.grammarExplanation}
           expanded={openSections.grammar}
           onToggle={() => toggle('grammar')}
+          onTermPress={onTermPress}
         />
       </Card>
     </Animated.View>
@@ -140,12 +151,14 @@ function Section({
   expanded,
   onToggle,
   bodyStyle,
+  onTermPress,
 }: {
   title: string;
   body: string;
   expanded: boolean;
   onToggle: () => void;
   bodyStyle?: object;
+  onTermPress?: (term: string) => void;
 }) {
   return (
     <View style={styles.section}>
@@ -161,7 +174,11 @@ function Section({
         </Text>
       </Pressable>
 
-      {expanded && <Text style={[styles.sectionBody, bodyStyle]}>{body}</Text>}
+      {expanded && (
+        <GrammarText style={[styles.sectionBody, bodyStyle]} onTermPress={onTermPress}>
+          {body}
+        </GrammarText>
+      )}
     </View>
   );
 }

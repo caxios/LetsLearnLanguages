@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { GrammarTeacherModal } from '@/components/grammar/GrammarTeacherModal';
 import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
 import { RecommendationList } from '@/components/evaluation/RecommendationList';
 import { ScoreCard } from '@/components/evaluation/ScoreCard';
@@ -26,6 +27,10 @@ interface EvaluationDetailProps {
  * the practice screen so a past attempt looks the same wherever it resurfaces.
  */
 export function EvaluationDetail({ evaluation }: EvaluationDetailProps) {
+  // The sheet is owned here so a term tapped in the feedback and one tapped in a
+  // recommendation open the same thing.
+  const [term, setTerm] = useState<string | null>(null);
+
   return (
     <View style={styles.container}>
       <ScoreCard
@@ -42,7 +47,7 @@ export function EvaluationDetail({ evaluation }: EvaluationDetailProps) {
         <Text style={styles.body}>{evaluation.input.englishInput}</Text>
       </Card>
 
-      <FeedbackPanel feedback={evaluation.feedback} />
+      <FeedbackPanel feedback={evaluation.feedback} onTermPress={setTerm} />
 
       <RecommendationList
         recommendations={evaluation.recommendations.map((rec) => ({
@@ -51,6 +56,13 @@ export function EvaluationDetail({ evaluation }: EvaluationDetailProps) {
           koreanTranslation: rec.koreanTranslation,
           grammarExplanation: rec.grammarExplanation,
         }))}
+        onTermPress={setTerm}
+      />
+
+      <GrammarTeacherModal
+        term={term}
+        context={evaluation.input.koreanText}
+        onClose={() => setTerm(null)}
       />
     </View>
   );
