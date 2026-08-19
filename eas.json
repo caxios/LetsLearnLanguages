@@ -22,7 +22,8 @@
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "kotlinVersion": "2.1.0"
       }
     }
   },
