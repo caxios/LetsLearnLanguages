@@ -8,13 +8,15 @@
       "developmentClient": true,
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "kotlinVersion": "2.1.0"
       }
     },
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "kotlinVersion": "2.1.0"
       }
     },
     "production": {
