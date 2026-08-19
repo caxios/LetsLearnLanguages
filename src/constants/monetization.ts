@@ -15,8 +15,11 @@ export const FreeLimits = {
   reviewEvaluation: 5,
 } as const;
 
-/** How many extra tries a rewarded ad hands back when a quota runs out. */
-export const AD_REWARD_TRIES = 2;
+/** How many rewarded ads must be watched to earn a bonus. */
+export const ADS_PER_BONUS = 2;
+
+/** How many extra tries one completed set of ads hands back. */
+export const AD_BONUS_TRIES = 1;
 
 /** Field inside `DailyUsage` that a feature counts against. */
 export type UsageCountKey = `${QuotaFeature}Count`;

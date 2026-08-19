@@ -31,17 +31,18 @@ const DIFFICULTY_LABEL: Record<TopicSentence['difficulty'], string> = {
  */
 export default function TopicsScreen() {
   const router = useRouter();
-  const sentences = useTopicSentences();
   const quota = useGatedAction('topicPracticeGenerate');
-
-  const koreanTexts = useMemo(
-    () => (sentences.data ?? []).map((sentence) => sentence.koreanText),
-    [sentences.data]
-  );
-  const { completed } = useCompletedSentences(koreanTexts);
 
   const [category, setCategory] = useState<TopicCategory | null>(null);
   const [topic, setTopic] = useState<string | null>(null);
+
+  const topicSentences = useTopicSentences(topic);
+
+  const koreanTexts = useMemo(
+    () => (topicSentences.sentences ?? []).map((sentence) => sentence.koreanText),
+    [topicSentences.sentences]
+  );
+  const { completed } = useCompletedSentences(koreanTexts);
 
   const setKoreanText = useInputStore((s) => s.setKoreanText);
   const setDailySentenceId = useInputStore((s) => s.setDailySentenceId);
@@ -53,29 +54,38 @@ export default function TopicsScreen() {
   const openCategory = (next: TopicCategory) => {
     setCategory(next);
     setTopic(null);
-    sentences.reset();
   };
 
-  /** One generation = one try, spent only when the sentences actually arrive. */
-  const generate = (next: string) => quota.run(() => sentences.mutateAsync(next));
+  /**
+   * The only thing that spends a try. Errors surface through the mutation, so
+   * the rejection is swallowed rather than left unhandled.
+   */
+  const generate = (next: string) => {
+    quota.run(() => topicSentences.generate(next)).catch(() => {});
+  };
 
   const openTopic = (next: string) => {
-    // Checked before the phase switches, so a blocked user stays on the list.
+    // Already generated: opening is just looking at them again. No quota, no ad.
+    if (topicSentences.hasSentencesFor(next)) {
+      setTopic(next);
+      return;
+    }
+
+    // Nothing cached, so generating is the only way to fill the screen — check
+    // the quota before navigating into one that would sit empty.
     if (!quota.check()) return;
     setTopic(next);
-    // mutateAsync rejects on failure; the error surfaces through the mutation.
-    generate(next).catch(() => {});
+    generate(next);
   };
 
   const regenerate = () => {
-    if (!topic) return;
-    generate(topic).catch(() => {});
+    if (topic) generate(topic);
   };
 
   const goBack = () => {
+    // Leaving a topic keeps its sentences cached, so coming back is free.
     if (topic) {
       setTopic(null);
-      sentences.reset();
       return;
     }
     setCategory(null);
@@ -124,32 +134,41 @@ export default function TopicsScreen() {
         <View style={styles.topicList}>
           <QuotaMeter feature="topicPracticeGenerate" />
 
-          {category!.topics.map((item) => (
-            <Pressable
-              key={item}
-              accessibilityRole="button"
-              accessibilityLabel={`${item} 문장 만들기`}
-              onPress={() => openTopic(item)}
-              style={({ pressed }) => [styles.topicRow, pressed && styles.pressed]}
-            >
-              <Text style={styles.topicText}>{item}</Text>
-              <SymbolView
-                name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-                size={16}
-                tintColor={Colors.textMuted}
-              />
-            </Pressable>
-          ))}
+          {category!.topics.map((item) => {
+            // Already generated topics reopen for free, which is worth showing
+            // before the tap rather than after.
+            const ready = topicSentences.hasSentencesFor(item);
+
+            return (
+              <Pressable
+                key={item}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  ready ? `${item} 만들어 둔 문장 보기` : `${item} 문장 만들기`
+                }
+                onPress={() => openTopic(item)}
+                style={({ pressed }) => [styles.topicRow, pressed && styles.pressed]}
+              >
+                <Text style={styles.topicText}>{item}</Text>
+                {ready && <Text style={styles.ready}>문장 있음</Text>}
+                <SymbolView
+                  name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+                  size={16}
+                  tintColor={Colors.textMuted}
+                />
+              </Pressable>
+            );
+          })}
         </View>
       )}
 
       {phase === 'sentences' && (
         <SentencePhase
-          isPending={sentences.isPending}
-          error={sentences.error}
-          sentences={sentences.data}
+          isGenerating={topicSentences.isGenerating}
+          error={topicSentences.generateError}
+          sentences={topicSentences.sentences}
           completed={completed}
-          onRetry={regenerate}
+          onGenerate={regenerate}
           onSentencePress={handleSentencePress}
         />
       )}
@@ -195,21 +214,21 @@ function Breadcrumb({
 }
 
 function SentencePhase({
-  isPending,
+  isGenerating,
   error,
   sentences,
   completed,
-  onRetry,
+  onGenerate,
   onSentencePress,
 }: {
-  isPending: boolean;
+  isGenerating: boolean;
   error: Error | null;
   sentences: TopicSentence[] | undefined;
   completed: Set<string>;
-  onRetry: () => void;
+  onGenerate: () => void;
   onSentencePress: (sentence: TopicSentence) => void;
 }) {
-  if (isPending) {
+  if (isGenerating) {
     return (
       <View style={styles.sentenceList}>
         <Text style={styles.generating}>✨ AI가 문장을 만드는 중...</Text>
@@ -220,11 +239,14 @@ function SentencePhase({
     );
   }
 
-  if (error) {
+  // A failed generation leaves nothing cached, so the retry is a real generation
+  // and costs a try like any other.
+  if (error && (!sentences || sentences.length === 0)) {
     return (
       <View style={styles.sentenceList}>
         <Text style={styles.error}>{error.message || '문장을 만들지 못했어요.'}</Text>
-        <Button title="다시 시도하기" variant="secondary" onPress={onRetry} />
+        <QuotaMeter feature="topicPracticeGenerate" />
+        <Button title="다시 시도하기" variant="secondary" onPress={onGenerate} />
       </View>
     );
   }
@@ -274,7 +296,15 @@ function SentencePhase({
         );
       })}
 
-      <Button title="다른 문장 받기" variant="secondary" onPress={onRetry} />
+      {/* The one action here that spends a try and plays an ad. Opening this
+          screen again costs nothing — only this button generates. */}
+      <View style={styles.regenerate}>
+        <QuotaMeter feature="topicPracticeGenerate" />
+        <Button title="새 문장 만들기" variant="secondary" onPress={onGenerate} />
+        {error && (
+          <Text style={styles.error}>{error.message || '새 문장을 만들지 못했어요.'}</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -382,6 +412,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
+  ready: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: FontSizes.xs,
+    color: Colors.secondary,
+  },
   topicText: {
     flex: 1,
     fontFamily: Fonts.bodyMedium,
@@ -403,6 +438,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     marginBottom: Spacing.md,
+  },
+  regenerate: {
+    marginTop: Spacing.sm,
+    gap: Spacing.md,
   },
   progress: {
     fontFamily: Fonts.body,

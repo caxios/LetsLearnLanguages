@@ -5,7 +5,12 @@ import { Button } from '@/components/ui/Button';
 import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
 import { BorderRadius, Spacing } from '@/constants/layout';
-import { AD_REWARD_TRIES, QUOTA_FEATURES, type QuotaFeature } from '@/constants/monetization';
+import {
+  ADS_PER_BONUS,
+  AD_BONUS_TRIES,
+  QUOTA_FEATURES,
+  type QuotaFeature,
+} from '@/constants/monetization';
 import { areAdsAvailable, showRewardedAd } from '@/services/ads';
 import { useMonetizationStore } from '@/stores/useMonetizationStore';
 
@@ -15,40 +20,65 @@ interface QuotaExceededModalProps {
   onClose: () => void;
 }
 
+/** Filled and empty pips for the ads watched so far towards the next bonus. */
+function AdProgress({ watched }: { watched: number }) {
+  return (
+    <View
+      style={styles.pips}
+      accessibilityLabel={`광고 ${watched}/${ADS_PER_BONUS} 시청 완료`}
+    >
+      {Array.from({ length: ADS_PER_BONUS }, (_, index) => (
+        <View key={index} style={[styles.pip, index < watched && styles.pipFilled]} />
+      ))}
+    </View>
+  );
+}
+
 /**
  * The paywall a free user meets at a daily limit. One component for all five
  * quotas — the copy is built from the feature's own metadata.
  *
- * Two ways out: watch a rewarded ad for a couple more tries, or go premium.
- * Billing is not wired up yet, so "upgrade" flips the local flag.
+ * Bonus tries are earned at a fixed ratio: `ADS_PER_BONUS` ads for
+ * `AD_BONUS_TRIES` try. Progress is shown up front so a half-finished set never
+ * looks like a broken button.
  */
 export function QuotaExceededModal({ visible, feature, onClose }: QuotaExceededModalProps) {
   const setPremium = useMonetizationStore((s) => s.setPremium);
-  const grantBonus = useMonetizationStore((s) => s.grantBonus);
-  const { label, limit, unit } = QUOTA_FEATURES[feature];
+  const recordAdView = useMonetizationStore((s) => s.recordAdView);
+  const watched = useMonetizationStore((s) => s.adViews[feature] ?? 0);
 
-  const [watching, setWatching] = useState(false);
-  const [adError, setAdError] = useState<string | null>(null);
+  const { label, limit, unit } = QUOTA_FEATURES[feature];
+  const remainingAds = Math.max(0, ADS_PER_BONUS - watched);
+
+  const [playing, setPlaying] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const handleWatchAd = async () => {
-    setAdError(null);
-    setWatching(true);
+    setNotice(null);
+    setPlaying(true);
     try {
       const outcome = await showRewardedAd();
 
-      if (outcome === 'rewarded') {
-        grantBonus(feature, AD_REWARD_TRIES);
+      if (outcome !== 'rewarded') {
+        setNotice(
+          outcome === 'dismissed'
+            ? '광고를 끝까지 봐야 시청 횟수가 올라가요.'
+            : '지금은 광고를 불러올 수 없어요. 잠시 후 다시 시도해 주세요.'
+        );
+        return;
+      }
+
+      const result = recordAdView(feature);
+
+      if (result.granted) {
         onClose();
         return;
       }
 
-      setAdError(
-        outcome === 'dismissed'
-          ? '광고를 끝까지 봐야 추가 횟수를 받을 수 있어요.'
-          : '지금은 광고를 불러올 수 없어요. 잠시 후 다시 시도해 주세요.'
-      );
+      const left = result.required - result.progress;
+      setNotice(`광고 ${result.progress}/${result.required} 시청 완료! ${left}번 더 보면 ${AD_BONUS_TRIES}${unit}를 받아요.`);
     } finally {
-      setWatching(false);
+      setPlaying(false);
     }
   };
 
@@ -77,18 +107,38 @@ export function QuotaExceededModal({ visible, feature, onClose }: QuotaExceededM
             {unit}까지 이용할 수 있어요. 내일 다시 채워집니다.
           </Text>
 
+          <View style={styles.reward}>
+            <View style={styles.rewardHeader}>
+              <Text style={styles.rewardLabel}>
+                광고 {ADS_PER_BONUS}번 = {AD_BONUS_TRIES}
+                {unit}
+              </Text>
+              <Text style={styles.rewardCount}>
+                {watched}/{ADS_PER_BONUS}
+              </Text>
+            </View>
+
+            <AdProgress watched={watched} />
+
+            <Text style={styles.rewardHint}>
+              {remainingAds === ADS_PER_BONUS
+                ? `광고 ${ADS_PER_BONUS}번을 보면 ${AD_BONUS_TRIES}${unit}를 더 받을 수 있어요.`
+                : `${remainingAds}번만 더 보면 ${AD_BONUS_TRIES}${unit}를 받아요.`}
+            </Text>
+          </View>
+
           <View style={styles.actions}>
             <Button
-              title={`광고 보고 +${AD_REWARD_TRIES}${unit} 받기`}
+              title={`광고 보기 (${watched}/${ADS_PER_BONUS})`}
               variant="secondary"
-              loading={watching}
+              loading={playing}
               disabled={!areAdsAvailable()}
               onPress={handleWatchAd}
             />
             {!areAdsAvailable() && (
               <Text style={styles.note}>이 기기에서는 광고를 사용할 수 없어요.</Text>
             )}
-            {adError && <Text style={styles.error}>{adError}</Text>}
+            {notice && <Text style={styles.notice}>{notice}</Text>}
 
             <Button title="프리미엄으로 업그레이드" onPress={handleUpgrade} />
             <Button title="닫기" variant="ghost" size="sm" onPress={onClose} />
@@ -132,6 +182,51 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
   },
+
+  reward: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+    padding: Spacing.base,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
+  },
+  rewardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  rewardLabel: {
+    fontFamily: Fonts.headingSemiBold,
+    fontSize: FontSizes.sm,
+    color: Colors.textPrimary,
+  },
+  rewardCount: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSizes.base,
+    color: Colors.primaryLight,
+  },
+  pips: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  pip: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.surfaceElevated,
+  },
+  pipFilled: {
+    backgroundColor: Colors.primary,
+  },
+  rewardHint: {
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.xs,
+    color: Colors.textSecondary,
+  },
+
   actions: {
     marginTop: Spacing.base,
     gap: Spacing.md,
@@ -143,7 +238,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
-  error: {
+  notice: {
     marginTop: -Spacing.sm,
     fontFamily: Fonts.body,
     fontSize: FontSizes.xs,
