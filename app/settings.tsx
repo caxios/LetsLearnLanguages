@@ -5,6 +5,7 @@ import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { InputMethodToggle } from '@/components/input/InputMethodToggle';
+import { Paywall } from '@/components/paywall/Paywall';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Colors } from '@/constants/colors';
@@ -15,6 +16,7 @@ import { maintenanceRepository } from '@/db/repositories/maintenanceRepository';
 import { QUOTA_FEATURES, type QuotaFeature } from '@/constants/monetization';
 import { useMonetizationStore, usageForToday } from '@/stores/useMonetizationStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export default function SettingsScreen() {
   const queryClient = useQueryClient();
@@ -29,6 +31,23 @@ export default function SettingsScreen() {
   const resetUsage = useMonetizationStore((s) => s.resetUsage);
 
   const [clearing, setClearing] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
+
+  const subscription = useSubscription();
+
+  const handleRestore = async () => {
+    setRestoreNotice(null);
+    const restored = await subscription.restore.mutateAsync();
+
+    setRestoreNotice(
+      restored === true
+        ? '구독을 복원했어요.'
+        : restored === false
+          ? '복원할 구독을 찾지 못했어요.'
+          : '지금은 구매를 복원할 수 없어요.'
+    );
+  };
 
   const clearAllData = async () => {
     setClearing(true);
@@ -63,9 +82,7 @@ export default function SettingsScreen() {
         </>
       )}
 
-      {/* Phase 1 has no billing yet, so premium is a local switch. Being able to
-          turn it back off is what makes the free limits testable at all. */}
-      <Text style={styles.sectionTitle}>구독 (테스트용)</Text>
+      <Text style={styles.sectionTitle}>구독</Text>
       <Card variant="outlined">
         <Row label="상태" value={isPremium ? '프리미엄' : '무료'} />
         {(Object.keys(QUOTA_FEATURES) as QuotaFeature[]).map((feature) => {
@@ -80,8 +97,27 @@ export default function SettingsScreen() {
           );
         })}
       </Card>
+      {!isPremium && (
+        <Button title="프리미엄으로 업그레이드" onPress={() => setPaywallOpen(true)} />
+      )}
       <Button
-        title={isPremium ? '무료로 되돌리기' : '프리미엄 켜기'}
+        title="구매 복원"
+        variant="secondary"
+        onPress={handleRestore}
+        loading={subscription.restore.isPending}
+        disabled={!subscription.isAvailable}
+      />
+      {!subscription.isAvailable && (
+        <Text style={styles.note}>이 기기에서는 결제를 사용할 수 없어요.</Text>
+      )}
+      {restoreNotice && <Text style={styles.note}>{restoreNotice}</Text>}
+
+      {/* A local switch, not a purchase — it is what makes the free limits
+          testable. In a build with billing configured the startup entitlement
+          check overwrites it, so it only sticks where billing is switched off. */}
+      <Text style={styles.sectionTitle}>개발자 도구</Text>
+      <Button
+        title={isPremium ? '무료로 되돌리기' : '프리미엄 켜기 (테스트용)'}
         variant="secondary"
         onPress={() => setPremium(!isPremium)}
       />
@@ -100,6 +136,8 @@ export default function SettingsScreen() {
         onPress={confirmClear}
         loading={clearing}
       />
+
+      <Paywall visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </ScrollView>
   );
 }
@@ -122,6 +160,13 @@ const styles = StyleSheet.create({
     padding: Spacing.base,
     paddingBottom: Spacing['3xl'],
     gap: Spacing.md,
+  },
+  note: {
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.xs,
+    lineHeight: FontSizes.xs * 1.6,
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
   sectionTitle: {
     marginTop: Spacing.sm,

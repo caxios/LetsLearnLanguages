@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Paywall } from '@/components/paywall/Paywall';
 import { Button } from '@/components/ui/Button';
 import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
@@ -43,7 +44,6 @@ function AdProgress({ watched }: { watched: number }) {
  * looks like a broken button.
  */
 export function QuotaExceededModal({ visible, feature, onClose }: QuotaExceededModalProps) {
-  const setPremium = useMonetizationStore((s) => s.setPremium);
   const recordAdView = useMonetizationStore((s) => s.recordAdView);
   const watched = useMonetizationStore((s) => s.adViews[feature] ?? 0);
 
@@ -52,6 +52,7 @@ export function QuotaExceededModal({ visible, feature, onClose }: QuotaExceededM
 
   const [playing, setPlaying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   const handleWatchAd = async () => {
     setNotice(null);
@@ -82,9 +83,11 @@ export function QuotaExceededModal({ visible, feature, onClose }: QuotaExceededM
     }
   };
 
-  const handleUpgrade = () => {
-    setPremium(true);
-    onClose();
+  // The paywall closes this modal with it: a successful purchase lifts the limit
+  // that opened it, so returning to a "you are out of tries" sheet would be a lie.
+  const handlePaywallClose = () => {
+    setPaywallOpen(false);
+    if (useMonetizationStore.getState().isPremium) onClose();
   };
 
   return (
@@ -140,11 +143,13 @@ export function QuotaExceededModal({ visible, feature, onClose }: QuotaExceededM
             )}
             {notice && <Text style={styles.notice}>{notice}</Text>}
 
-            <Button title="프리미엄으로 업그레이드" onPress={handleUpgrade} />
+            <Button title="프리미엄으로 업그레이드" onPress={() => setPaywallOpen(true)} />
             <Button title="닫기" variant="ghost" size="sm" onPress={onClose} />
           </View>
         </Pressable>
       </Pressable>
+
+      <Paywall visible={paywallOpen} onClose={handlePaywallClose} />
     </Modal>
   );
 }

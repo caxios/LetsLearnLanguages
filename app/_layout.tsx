@@ -14,8 +14,10 @@ import '../global.css';
 
 import { Colors } from '@/constants/colors';
 import { Fonts } from '@/constants/fonts';
+import { useSubscription } from '@/hooks/useSubscription';
 import { DatabaseProvider } from '@/providers/DatabaseProvider';
 import { initializeAds } from '@/services/ads';
+import { initializeRevenue } from '@/services/revenue';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { useMonetizationStore } from '@/stores/useMonetizationStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -71,6 +73,16 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
+/**
+ * Reconciles the stored premium flag with RevenueCat on launch. Renders nothing;
+ * it exists because the check needs to run inside the query provider, and the
+ * provider is mounted below the component that owns app startup.
+ */
+function SubscriptionSync() {
+  useSubscription();
+  return null;
+}
+
 function RootLayoutNav() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const loadMonetization = useMonetizationStore((s) => s.loadMonetization);
@@ -92,6 +104,12 @@ function RootLayoutNav() {
     initializeAds();
   }, []);
 
+  // Same deal for RevenueCat: configuring early means the entitlement check on
+  // first render has something to talk to. No-ops without a key or a build.
+  useEffect(() => {
+    initializeRevenue();
+  }, []);
+
   return (
     // React Navigation mounts a provider of its own, but declaring it here makes
     // the insets available everywhere — including inside the bottom sheets, which
@@ -99,6 +117,7 @@ function RootLayoutNav() {
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <DatabaseProvider>
         <QueryProvider>
+          <SubscriptionSync />
           <ThemeProvider value={AppTheme}>
             <StatusBar style="light" />
             <Stack
