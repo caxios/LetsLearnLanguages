@@ -13,6 +13,7 @@ import {
 
 import { EvaluationDetail, type StoredEvaluation } from '@/components/evaluation/EvaluationDetail';
 import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
+import { AdBanner } from '@/components/ads/AdBanner';
 import { AdLoadingOverlay } from '@/components/monetization/AdLoadingOverlay';
 import { QuotaMeter } from '@/components/monetization/QuotaMeter';
 import { InputMethodToggle } from '@/components/input/InputMethodToggle';
@@ -114,7 +115,11 @@ export default function FreeInputScreen() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <KoreanInput value={koreanText} onChangeText={setKoreanText} />
 
         {previous.isLoading && !retrying ? (
@@ -168,6 +173,8 @@ export default function FreeInputScreen() {
           </>
         )}
       </ScrollView>
+
+      <AdBanner />
 
       <AdLoadingOverlay visible={quota.isShowingAd} />
       <QuotaExceededModal {...quota.modal} />
@@ -242,6 +249,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scroll: {
+    flex: 1,
   },
   loading: {
     paddingVertical: Spacing.xl,

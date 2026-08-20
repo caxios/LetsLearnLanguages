@@ -42,6 +42,20 @@ export function areAdsAvailable(): boolean {
   return getAdsModule() !== null;
 }
 
+/**
+ * The banner pieces, or `null` where AdMob is not present.
+ *
+ * `BannerAd` is a component, so it cannot be imported at module scope like the
+ * rest of the app's components — the require has to stay behind the same lazy
+ * guard everything else here uses.
+ */
+export function getBannerAd(): Pick<AdsModule, 'BannerAd' | 'BannerAdSize'> | null {
+  const module = getAdsModule();
+  if (!module) return null;
+
+  return { BannerAd: module.BannerAd, BannerAdSize: module.BannerAdSize };
+}
+
 let initialized: Promise<unknown> | null = null;
 
 /** Idempotent; safe to call on every app start. */

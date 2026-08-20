@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/AdBanner';
 import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
 import { QuotaMeter } from '@/components/monetization/QuotaMeter';
 import { DailyMessageCard } from '@/components/daily/DailyMessageCard';
@@ -61,102 +62,106 @@ export default function HomeScreen() {
   const totalCount = sentences.data?.length ?? 0;
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={sentences.isFetching && !sentences.isLoading}
-          onRefresh={() => {
-            sentences.refetch();
-            stats.refetch();
-            dailyMessage.refetch();
-          }}
-          tintColor={Colors.textSecondary}
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={sentences.isFetching && !sentences.isLoading}
+            onRefresh={() => {
+              sentences.refetch();
+              stats.refetch();
+              dailyMessage.refetch();
+            }}
+            tintColor={Colors.textSecondary}
+          />
+        }
+      >
+        <Text style={styles.date}>📅 {today}</Text>
+
+        {stats.isLoading ? (
+          <Skeleton height={176} borderRadius={16} />
+        ) : (
+          <StreakBadge
+            streak={stats.data?.streak ?? 0}
+            activeDates={stats.data?.activeDates ?? []}
+            today={stats.data?.today ?? format(new Date(), 'yyyy-MM-dd')}
+          />
+        )}
+
+        <DailyMessageCard
+          message={dailyMessage.data?.message}
+          isLoading={dailyMessage.isLoading}
         />
-      }
-    >
-      <Text style={styles.date}>📅 {today}</Text>
 
-      {stats.isLoading ? (
-        <Skeleton height={176} borderRadius={16} />
-      ) : (
-        <StreakBadge
-          streak={stats.data?.streak ?? 0}
-          activeDates={stats.data?.activeDates ?? []}
-          today={stats.data?.today ?? format(new Date(), 'yyyy-MM-dd')}
-        />
-      )}
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>오늘의 문장</Text>
+            {totalCount > 0 && (
+              <Text style={styles.progress}>
+                {completedCount}/{totalCount} 연습함
+              </Text>
+            )}
+          </View>
 
-      <DailyMessageCard
-        message={dailyMessage.data?.message}
-        isLoading={dailyMessage.isLoading}
-      />
-
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTitle}>오늘의 문장</Text>
-          {totalCount > 0 && (
-            <Text style={styles.progress}>
-              {completedCount}/{totalCount} 연습함
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="새로운 문장 3개로 바꾸기"
+            accessibilityState={{ busy: refreshSentences.isPending }}
+            disabled={refreshSentences.isPending}
+            onPress={handleRefresh}
+            style={({ pressed }) => [styles.refresh, pressed && styles.refreshPressed]}
+          >
+            {refreshSentences.isPending ? (
+              <ActivityIndicator size="small" color={Colors.primaryLight} />
+            ) : (
+              <SymbolView
+                name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }}
+                size={18}
+                tintColor={Colors.primaryLight}
+              />
+            )}
+            <Text style={styles.refreshLabel}>
+              {refreshSentences.isPending ? '생성 중…' : '새 문장 받기'}
             </Text>
-          )}
+          </Pressable>
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="새로운 문장 3개로 바꾸기"
-          accessibilityState={{ busy: refreshSentences.isPending }}
-          disabled={refreshSentences.isPending}
-          onPress={handleRefresh}
-          style={({ pressed }) => [styles.refresh, pressed && styles.refreshPressed]}
-        >
-          {refreshSentences.isPending ? (
-            <ActivityIndicator size="small" color={Colors.primaryLight} />
-          ) : (
-            <SymbolView
-              name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }}
-              size={18}
-              tintColor={Colors.primaryLight}
-            />
-          )}
-          <Text style={styles.refreshLabel}>
-            {refreshSentences.isPending ? '생성 중…' : '새 문장 받기'}
+        <QuotaMeter feature="dailySentenceRefresh" variant="pill" />
+
+        {refreshSentences.isError && (
+          <Text style={styles.error}>
+            {refreshSentences.error instanceof Error
+              ? refreshSentences.error.message
+              : '새 문장을 만들지 못했어요.'}
           </Text>
-        </Pressable>
-      </View>
+        )}
 
-      <QuotaMeter feature="dailySentenceRefresh" variant="pill" />
-
-      {refreshSentences.isError && (
-        <Text style={styles.error}>
-          {refreshSentences.error instanceof Error
-            ? refreshSentences.error.message
-            : '새 문장을 만들지 못했어요.'}
-        </Text>
-      )}
-
-      <DailySentenceList
-        sentences={sentences.data}
-        isLoading={sentences.isLoading}
-        error={sentences.error as Error | null}
-        onSentencePress={handleSentencePress}
-        onRetry={() => sentences.refetch()}
-      />
-
-      <View style={styles.divider} />
-
-      {stats.isLoading ? (
-        <Skeleton height={140} borderRadius={16} />
-      ) : (
-        <StatsPanel
-          uniqueSentences={stats.data?.uniqueSentences ?? 0}
-          totalReviews={stats.data?.totalReviews ?? 0}
+        <DailySentenceList
+          sentences={sentences.data}
+          isLoading={sentences.isLoading}
+          error={sentences.error as Error | null}
+          onSentencePress={handleSentencePress}
+          onRetry={() => sentences.refetch()}
         />
-      )}
 
-      <QuotaExceededModal {...refreshQuota.modal} />
-    </ScrollView>
+        <View style={styles.divider} />
+
+        {stats.isLoading ? (
+          <Skeleton height={140} borderRadius={16} />
+        ) : (
+          <StatsPanel
+            uniqueSentences={stats.data?.uniqueSentences ?? 0}
+            totalReviews={stats.data?.totalReviews ?? 0}
+          />
+        )}
+
+        <QuotaExceededModal {...refreshQuota.modal} />
+      </ScrollView>
+
+      <AdBanner />
+    </View>
   );
 }
 
@@ -164,6 +169,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     padding: Spacing.base,

@@ -10,22 +10,39 @@ const TEST_REWARDED = {
   ios: 'ca-app-pub-3940256099942544/1712485313',
 } as const;
 
+/** Google's public banner test unit. Same reasoning as the rewarded one above. */
+const TEST_BANNER = {
+  android: 'ca-app-pub-3940256099942544/6300978111',
+  ios: 'ca-app-pub-3940256099942544/2934735716',
+} as const;
+
 /**
  * Real unit IDs come from the environment so they never land in git.
  * Anything missing falls back to the test unit rather than breaking the flow.
+ *
+ * The `process.env.EXPO_PUBLIC_*` reads have to stay written out in full —
+ * Expo inlines them textually at build time, so a computed key resolves to
+ * undefined in a release build.
  */
-function productionUnitId(): string | undefined {
-  return Platform.select({
-    android: process.env.EXPO_PUBLIC_ADMOB_REWARDED_ANDROID,
-    ios: process.env.EXPO_PUBLIC_ADMOB_REWARDED_IOS,
-    default: undefined,
-  });
+function pickUnit(test: { android: string; ios: string }, live: { android?: string; ios?: string }) {
+  const testUnit = Platform.OS === 'ios' ? test.ios : test.android;
+  if (__DEV__) return testUnit;
+
+  return Platform.select({ android: live.android, ios: live.ios, default: undefined }) || testUnit;
 }
 
 export function rewardedAdUnitId(): string {
-  const testUnit = Platform.OS === 'ios' ? TEST_REWARDED.ios : TEST_REWARDED.android;
-  if (__DEV__) return testUnit;
-  return productionUnitId() || testUnit;
+  return pickUnit(TEST_REWARDED, {
+    android: process.env.EXPO_PUBLIC_ADMOB_REWARDED_ANDROID,
+    ios: process.env.EXPO_PUBLIC_ADMOB_REWARDED_IOS,
+  });
+}
+
+export function bannerAdUnitId(): string {
+  return pickUnit(TEST_BANNER, {
+    android: process.env.EXPO_PUBLIC_ADMOB_BANNER_ANDROID,
+    ios: process.env.EXPO_PUBLIC_ADMOB_BANNER_IOS,
+  });
 }
 
 /**

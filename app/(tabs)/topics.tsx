@@ -3,6 +3,7 @@ import { SymbolView } from 'expo-symbols';
 import { useCallback, useMemo, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/AdBanner';
 import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
 import { QuotaMeter } from '@/components/monetization/QuotaMeter';
 import { Badge } from '@/components/ui/Badge';
@@ -123,79 +124,83 @@ export default function TopicsScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {phase === 'categories' ? (
-        <View style={styles.intro}>
-          <Text style={styles.title}>주제별 연습</Text>
-          <Text style={styles.subtitle}>관심 있는 주제를 골라 5문장을 연습해 보세요.</Text>
-        </View>
-      ) : (
-        <Breadcrumb category={category!} topic={topic} onBack={goBack} />
-      )}
+    <View style={styles.screen}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {phase === 'categories' ? (
+          <View style={styles.intro}>
+            <Text style={styles.title}>주제별 연습</Text>
+            <Text style={styles.subtitle}>관심 있는 주제를 골라 5문장을 연습해 보세요.</Text>
+          </View>
+        ) : (
+          <Breadcrumb category={category!} topic={topic} onBack={goBack} />
+        )}
 
-      {phase === 'categories' && (
-        <View style={styles.grid}>
-          {TOPIC_CATEGORIES.map((item) => (
-            <Pressable
-              key={item.id}
-              accessibilityRole="button"
-              accessibilityLabel={`${item.name} 주제 보기`}
-              onPress={() => openCategory(item)}
-              style={({ pressed }) => [styles.categoryCard, pressed && styles.pressed]}
-            >
-              <Text style={styles.categoryEmoji}>{item.emoji}</Text>
-              <Text style={styles.categoryName}>{item.name}</Text>
-              <Text style={styles.categoryCount}>{item.topics.length}개 주제</Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
-
-      {phase === 'topics' && (
-        <View style={styles.topicList}>
-          <QuotaMeter feature="topicPracticeGenerate" />
-
-          {category!.topics.map((item) => {
-            // Already generated topics reopen for free, which is worth showing
-            // before the tap rather than after.
-            const ready = topicSentences.hasSentencesFor(item);
-
-            return (
+        {phase === 'categories' && (
+          <View style={styles.grid}>
+            {TOPIC_CATEGORIES.map((item) => (
               <Pressable
-                key={item}
+                key={item.id}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  ready ? `${item} 만들어 둔 문장 보기` : `${item} 문장 만들기`
-                }
-                onPress={() => openTopic(item)}
-                style={({ pressed }) => [styles.topicRow, pressed && styles.pressed]}
+                accessibilityLabel={`${item.name} 주제 보기`}
+                onPress={() => openCategory(item)}
+                style={({ pressed }) => [styles.categoryCard, pressed && styles.pressed]}
               >
-                <Text style={styles.topicText}>{item}</Text>
-                {ready && <Text style={styles.ready}>문장 있음</Text>}
-                <SymbolView
-                  name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-                  size={16}
-                  tintColor={Colors.textMuted}
-                />
+                <Text style={styles.categoryEmoji}>{item.emoji}</Text>
+                <Text style={styles.categoryName}>{item.name}</Text>
+                <Text style={styles.categoryCount}>{item.topics.length}개 주제</Text>
               </Pressable>
-            );
-          })}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
 
-      {phase === 'sentences' && (
-        <SentencePhase
-          isGenerating={topicSentences.isGenerating}
-          error={topicSentences.generateError}
-          sentences={topicSentences.sentences}
-          completed={completed}
-          onGenerate={regenerate}
-          onSentencePress={handleSentencePress}
-        />
-      )}
+        {phase === 'topics' && (
+          <View style={styles.topicList}>
+            <QuotaMeter feature="topicPracticeGenerate" />
 
-      <QuotaExceededModal {...quota.modal} />
-    </ScrollView>
+            {category!.topics.map((item) => {
+              // Already generated topics reopen for free, which is worth showing
+              // before the tap rather than after.
+              const ready = topicSentences.hasSentencesFor(item);
+
+              return (
+                <Pressable
+                  key={item}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    ready ? `${item} 만들어 둔 문장 보기` : `${item} 문장 만들기`
+                  }
+                  onPress={() => openTopic(item)}
+                  style={({ pressed }) => [styles.topicRow, pressed && styles.pressed]}
+                >
+                  <Text style={styles.topicText}>{item}</Text>
+                  {ready && <Text style={styles.ready}>문장 있음</Text>}
+                  <SymbolView
+                    name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+                    size={16}
+                    tintColor={Colors.textMuted}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        {phase === 'sentences' && (
+          <SentencePhase
+            isGenerating={topicSentences.isGenerating}
+            error={topicSentences.generateError}
+            sentences={topicSentences.sentences}
+            completed={completed}
+            onGenerate={regenerate}
+            onSentencePress={handleSentencePress}
+          />
+        )}
+
+        <QuotaExceededModal {...quota.modal} />
+      </ScrollView>
+
+      <AdBanner />
+    </View>
   );
 }
 
@@ -334,6 +339,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     padding: Spacing.base,

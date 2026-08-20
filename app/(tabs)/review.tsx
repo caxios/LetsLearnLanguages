@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { AdBanner } from '@/components/ads/AdBanner';
 import { EvaluationDetail } from '@/components/evaluation/EvaluationDetail';
 import { GrammarNoteCard } from '@/components/grammar/GrammarNoteCard';
 import { ReviewAttemptPanel } from '@/components/evaluation/ReviewAttemptPanel';
@@ -75,7 +76,11 @@ export default function ReviewScreen() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         {cards.isLoading ? (
           <Skeleton height={20} width="60%" />
         ) : (
@@ -133,6 +138,8 @@ export default function ReviewScreen() {
           </View>
         )}
       </ScrollView>
+
+      <AdBanner />
     </KeyboardAvoidingView>
   );
 }
@@ -241,6 +248,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     padding: Spacing.base,
