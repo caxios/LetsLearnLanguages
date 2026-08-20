@@ -1,7 +1,7 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { QuotaExceededModal } from '@/components/monetization/QuotaExceededModal';
 import { QuotaMeter } from '@/components/monetization/QuotaMeter';
@@ -82,14 +82,35 @@ export default function TopicsScreen() {
     if (topic) generate(topic);
   };
 
-  const goBack = () => {
+  const goBack = useCallback(() => {
     // Leaving a topic keeps its sentences cached, so coming back is free.
     if (topic) {
       setTopic(null);
       return;
     }
     setCategory(null);
-  };
+  }, [topic]);
+
+  // The Android back button pops a phase instead of the whole tab, matching the
+  // breadcrumb's own back control exactly — both call `goBack`.
+  //
+  // Bound to focus rather than to mount: tab screens stay mounted when another
+  // tab is showing, so a plain useEffect would leave this listener live on the
+  // Home tab, where it would silently pop a phase off this screen and swallow
+  // the press.
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        // At the categories root there is nothing to pop; let the OS have it.
+        if (topic === null && category === null) return false;
+
+        goBack();
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, [category, goBack, topic])
+  );
 
   const handleSentencePress = (sentence: TopicSentence) => {
     // Topic sentences are ephemeral, so there is no daily sentence to tie the
