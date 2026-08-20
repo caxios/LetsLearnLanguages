@@ -73,7 +73,7 @@ export default function ReviewScreen() {
     // keyboard treatment as the free input tab.
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {cards.isLoading ? (

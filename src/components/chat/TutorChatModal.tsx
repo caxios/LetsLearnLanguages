@@ -2,6 +2,7 @@ import { SymbolView } from 'expo-symbols';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -49,6 +50,19 @@ export function TutorChatModal({ visible, context, onClose }: TutorChatModalProp
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
 
+  // While the keyboard is up it covers the navigation bar, so paying the inset
+  // as well would float the composer a finger's width above the keyboard
+  // instead of sitting on it.
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
+
   const canSend = draft.trim().length > 0 && !chat.isSending;
 
   // New messages (and the typing indicator) should never appear below the fold.
@@ -78,7 +92,7 @@ export function TutorChatModal({ visible, context, onClose }: TutorChatModalProp
     >
       <KeyboardAvoidingView
         style={styles.scrim}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Only the strip above the sheet dismisses; the sheet itself does not. */}
         <Pressable style={styles.backdrop} accessibilityLabel="닫기" onPress={onClose} />
@@ -171,7 +185,12 @@ export function TutorChatModal({ visible, context, onClose }: TutorChatModalProp
           {/* The composer is the bottom-most element, so it owns the inset:
               without it the field sits under the home indicator or the Android
               navigation bar. */}
-          <View style={[styles.composer, { paddingBottom: Spacing.md + insets.bottom }]}>
+          <View
+            style={[
+              styles.composer,
+              { paddingBottom: Spacing.md + (keyboardVisible ? 0 : insets.bottom) },
+            ]}
+          >
             <TextInput
               accessibilityLabel="질문 입력"
               style={styles.input}
