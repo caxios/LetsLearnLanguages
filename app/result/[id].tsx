@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
+import { TutorChatModal } from '@/components/chat/TutorChatModal';
 import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
 import { RecommendationList } from '@/components/evaluation/RecommendationList';
 import { ScoreCard } from '@/components/evaluation/ScoreCard';
@@ -14,6 +15,7 @@ import { FontSizes, Fonts } from '@/constants/fonts';
 import { Spacing } from '@/constants/layout';
 import { useReviewCardForEvaluation, useToggleReviewBookmark } from '@/hooks/useAddToReview';
 import { useEvaluationResult } from '@/hooks/useEvaluationResult';
+import { toTutorChatContext } from '@/types/chat';
 
 export default function ResultScreen() {
   const router = useRouter();
@@ -23,6 +25,7 @@ export default function ResultScreen() {
   const result = useEvaluationResult(evaluationId);
   // Tapping a grammar term in the feedback opens the Grammar Teacher sheet.
   const [term, setTerm] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const reviewCard = useReviewCardForEvaluation(evaluationId);
   const toggleBookmark = useToggleReviewBookmark();
 
@@ -92,6 +95,19 @@ export default function ResultScreen() {
           onTermPress={setTerm}
         />
 
+        <Button
+          title="선생님께 질문하기"
+          variant="secondary"
+          onPress={() => setChatOpen(true)}
+          icon={
+            <SymbolView
+              name={{ ios: 'bubble.left.and.bubble.right', android: 'chat', web: 'chat' }}
+              size={16}
+              tintColor={Colors.textPrimary}
+            />
+          }
+        />
+
         <View style={styles.actions}>
           <Button
             title="다시 해보기"
@@ -131,6 +147,14 @@ export default function ResultScreen() {
         term={term}
         context={evaluation.input.koreanText}
         onClose={() => setTerm(null)}
+      />
+
+      {/* Mounted, not conditionally rendered: the sheet owns the conversation,
+          so unmounting on close would discard the thread. */}
+      <TutorChatModal
+        visible={chatOpen}
+        context={toTutorChatContext(evaluation)}
+        onClose={() => setChatOpen(false)}
       />
     </>
   );

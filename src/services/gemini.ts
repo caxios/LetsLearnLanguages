@@ -2,11 +2,16 @@ import {
   GoogleGenerativeAI,
   GoogleGenerativeAIFetchError,
   SchemaType,
+  type Content,
   type GenerativeModel,
   type Schema,
 } from '@google/generative-ai';
 
-import { EVALUATION_SYSTEM_PROMPT, REVIEW_SCORING_SYSTEM_PROMPT } from '@/constants/prompts';
+import {
+  EVALUATION_SYSTEM_PROMPT,
+  REVIEW_SCORING_SYSTEM_PROMPT,
+  TUTOR_CHAT_SYSTEM_PROMPT,
+} from '@/constants/prompts';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import {
   evaluationResponseSchema,
@@ -14,8 +19,9 @@ import {
   type EvaluationResponse,
   type ScoreOnlyResponse,
 } from '@/types/evaluation';
+import type { ChatMessage, TutorChatContext } from '@/types/chat';
 import { ApiKeyMissingError, ApiResponseError, ValidationError, withRetry } from '@/utils/errors';
-import { applyGrammarTags, autoTagKnownTerms } from '@/utils/grammarTags';
+import { applyGrammarTags, autoTagKnownTerms, stripGrammarTags } from '@/utils/grammarTags';
 
 export const GEMINI_MODEL = 'gemini-2.5-flash';
 
@@ -299,5 +305,113 @@ Score this translation. Return only the three scores.
     }
 
     return validated.data;
+  });
+}
+
+// --- Follow-up Q&A (AI tutor chat) ----------------------------------------
+
+/**
+ * The model's reply to the injected context. It is never displayed — it exists
+ * so the conversation history alternates user/model, which the API requires
+ * before the learner's first real question can be appended.
+ */
+const CONTEXT_ACKNOWLEDGEMENT =
+  '네, 방금 받은 평가 내용을 모두 확인했어요. 궁금한 점을 물어봐 주세요.';
+
+let _tutorModel: GenerativeModel | null = null;
+let _tutorModelApiKey: string | null = null;
+
+function getTutorModel(): GenerativeModel {
+  const apiKey = requireGeminiApiKey();
+
+  if (_tutorModel && _tutorModelApiKey === apiKey) return _tutorModel;
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  _tutorModel = genAI.getGenerativeModel({
+    model: GEMINI_MODEL,
+    // Prose, not JSON — note the absence of responseMimeType/responseSchema that
+    // every other model instance in this file sets.
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 1024,
+    },
+    systemInstruction: TUTOR_CHAT_SYSTEM_PROMPT,
+  });
+  _tutorModelApiKey = apiKey;
+
+  return _tutorModel;
+}
+
+/** The evaluation, rendered as the opening message of the conversation. */
+function buildContextPrompt(context: TutorChatContext): string {
+  const recommendations = context.recommendations
+    .map((rec, index) =>
+      [
+        `${index + 1}. "${rec.sentence}"`,
+        // Older rows have no Korean translation; an empty label is just noise.
+        rec.koreanTranslation ? `   한국어: ${rec.koreanTranslation}` : '',
+        `   문법 설명: ${stripGrammarTags(rec.grammarExplanation)}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    )
+    .join('\n');
+
+  return [
+    '학습자가 방금 받은 평가입니다. 앞으로의 모든 질문은 이 내용에 대한 것입니다.',
+    '',
+    `[한국어 원문]\n${context.koreanText}`,
+    '',
+    `[학습자가 쓴 영어 번역]\n${context.englishInput}`,
+    '',
+    // Stored feedback carries [[...]] markup for the grammar links; the model
+    // should read the words, not the app's formatting.
+    `[받은 피드백]\n${stripGrammarTags(context.feedback)}`,
+    '',
+    `[추천 문장]\n${recommendations || '(없음)'}`,
+  ].join('\n');
+}
+
+/**
+ * Ask the tutor one follow-up question about an evaluation.
+ *
+ * Stateless by design: the caller owns the conversation and passes it in, so a
+ * failed turn can be retried and the screen's state stays the single source of
+ * truth. The context is injected as the opening turn rather than baked into the
+ * system prompt because the model instance is cached across evaluations — the
+ * part that changes has to travel with the conversation.
+ */
+export async function askFollowUpQuestion(input: {
+  context: TutorChatContext;
+  history: ChatMessage[];
+  question: string;
+}): Promise<string> {
+  const model = getTutorModel();
+
+  const history: Content[] = [
+    { role: 'user', parts: [{ text: buildContextPrompt(input.context) }] },
+    { role: 'model', parts: [{ text: CONTEXT_ACKNOWLEDGEMENT }] },
+    // A question that never got an answer would leave two user turns in a row.
+    ...input.history
+      .filter((message) => !message.failed)
+      .map((message) => ({ role: message.role, parts: [{ text: message.text }] })),
+  ];
+
+  return withRetry(async () => {
+    try {
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(input.question);
+      const answer = result.response.text().trim();
+
+      if (!answer) {
+        throw new ApiResponseError('Gemini', 0, 'Tutor returned an empty answer');
+      }
+      return answer;
+    } catch (error) {
+      if (error instanceof GoogleGenerativeAIFetchError) {
+        throw new ApiResponseError('Gemini', error.status ?? 0, error.message);
+      }
+      throw error;
+    }
   });
 }
