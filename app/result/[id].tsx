@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TutorChatModal } from '@/components/chat/TutorChatModal';
 import { FeedbackPanel } from '@/components/evaluation/FeedbackPanel';
@@ -22,6 +23,9 @@ export default function ResultScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const evaluationId = Number(id);
 
+  // A stack route, not a tab: there is no tab bar below it to absorb the
+  // navigation bar, so the content has to clear it itself.
+  const insets = useSafeAreaInsets();
   const result = useEvaluationResult(evaluationId);
   // Tapping a grammar term in the feedback opens the Grammar Teacher sheet.
   const [term, setTerm] = useState<string | null>(null);
@@ -69,7 +73,10 @@ export default function ResultScreen() {
         }}
       />
 
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[styles.content, { paddingBottom: Spacing['3xl'] + insets.bottom }]}
+      >
         <ScoreCard
           naturalness={evaluation.naturalnessScore}
           grammar={evaluation.grammarScore}

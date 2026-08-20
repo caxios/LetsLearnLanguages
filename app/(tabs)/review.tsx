@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -67,68 +69,71 @@ export default function ReviewScreen() {
   };
 
   return (
-    <ScrollView
+    // The review card carries a translation field, so this screen needs the same
+    // keyboard treatment as the free input tab.
+    <KeyboardAvoidingView
       style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {cards.isLoading ? (
-        <Skeleton height={20} width="60%" />
-      ) : (
-        <Text style={styles.due}>오늘 복습할 카드: {dueCards.length}장</Text>
-      )}
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {cards.isLoading ? (
+          <Skeleton height={20} width="60%" />
+        ) : (
+          <Text style={styles.due}>오늘 복습할 카드: {dueCards.length}장</Text>
+        )}
 
-      {(grammarNotes.data?.length ?? 0) > 0 && (
-        <View style={styles.grammarSection}>
-          <Text style={styles.sectionTitle}>📘 문법 노트</Text>
-          <Text style={styles.sectionHint}>
-            번역 없이 읽기만 하면 되는 카드예요. 언제든 다시 펼쳐 보세요.
-          </Text>
+        {(grammarNotes.data?.length ?? 0) > 0 && (
+          <View style={styles.grammarSection}>
+            <Text style={styles.sectionTitle}>📘 문법 노트</Text>
+            <Text style={styles.sectionHint}>
+              번역 없이 읽기만 하면 되는 카드예요. 언제든 다시 펼쳐 보세요.
+            </Text>
 
-          {grammarNotes.data!.map((note) => (
-            <GrammarNoteCard
-              key={note.id}
-              note={note}
-              onDelete={() => confirmDeleteNote(note.id, note.term)}
+            {grammarNotes.data!.map((note) => (
+              <GrammarNoteCard
+                key={note.id}
+                note={note}
+                onDelete={() => confirmDeleteNote(note.id, note.term)}
+              />
+            ))}
+          </View>
+        )}
+
+        {cards.isLoading ? (
+          <Card variant="elevated" style={styles.card}>
+            <Skeleton height={24} width="80%" />
+          </Card>
+        ) : dueCards.length === 0 ? (
+          <Card variant="elevated" style={styles.card}>
+            <Text style={styles.hint}>
+              복습할 카드가 없어요. 평가 결과에서 «복습에 저장»을 누르면 카드가 쌓입니다.
+            </Text>
+          </Card>
+        ) : (
+          dueCards.map((card, index) => (
+            <ReviewFlashcard
+              key={card.id}
+              card={card}
+              index={index}
+              total={dueCards.length}
+              revealed={!!revealed[card.id]}
+              onToggle={() => toggle(card.id)}
+              onScored={() => reveal(card.id)}
+              onDelete={() => confirmDelete(card)}
             />
-          ))}
-        </View>
-      )}
+          ))
+        )}
 
-      {cards.isLoading ? (
-        <Card variant="elevated" style={styles.card}>
-          <Skeleton height={24} width="80%" />
-        </Card>
-      ) : dueCards.length === 0 ? (
-        <Card variant="elevated" style={styles.card}>
-          <Text style={styles.hint}>
-            복습할 카드가 없어요. 평가 결과에서 «복습에 저장»을 누르면 카드가 쌓입니다.
-          </Text>
-        </Card>
-      ) : (
-        dueCards.map((card, index) => (
-          <ReviewFlashcard
-            key={card.id}
-            card={card}
-            index={index}
-            total={dueCards.length}
-            revealed={!!revealed[card.id]}
-            onToggle={() => toggle(card.id)}
-            onScored={() => reveal(card.id)}
-            onDelete={() => confirmDelete(card)}
-          />
-        ))
-      )}
-
-      {dueCards.length > 0 && (
-        <View style={styles.progress}>
-          <ProgressBar progress={revealedCount / dueCards.length} />
-          <Text style={styles.progressLabel}>
-            {revealedCount}/{dueCards.length} 완료
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+        {dueCards.length > 0 && (
+          <View style={styles.progress}>
+            <ProgressBar progress={revealedCount / dueCards.length} />
+            <Text style={styles.progressLabel}>
+              {revealedCount}/{dueCards.length} 완료
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

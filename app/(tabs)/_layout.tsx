@@ -1,6 +1,7 @@
 import { Link, Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/colors';
 import { Fonts, FontSizes } from '@/constants/fonts';
@@ -13,16 +14,28 @@ const ICONS = {
   review: { ios: 'note.text', android: 'note', web: 'note' },
 } as const;
 
+/** Bar height above the system inset; the inset is added on top of this. */
+const TAB_BAR_HEIGHT = 60;
+
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
+        // Android draws edge to edge, so the gesture pill or the three-button
+        // navigation bar covers the tab bar unless it grows by the inset. The
+        // old fixed 85/20 happened to clear an iPhone home indicator and clipped
+        // the labels everywhere else.
         tabBarStyle: {
           backgroundColor: Colors.surface,
           borderTopColor: Colors.border,
-          height: 85,
-          paddingBottom: 20,
+          height: TAB_BAR_HEIGHT + insets.bottom,
+          paddingBottom: insets.bottom,
         },
+        // Otherwise the bar rides up on top of the keyboard and eats the room
+        // the input needs.
+        tabBarHideOnKeyboard: true,
         tabBarLabelStyle: {
           fontFamily: Fonts.bodyMedium,
           fontSize: FontSizes.xs,

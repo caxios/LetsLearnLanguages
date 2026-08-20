@@ -9,6 +9,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import '../global.css';
 
 import { Colors } from '@/constants/colors';
@@ -92,24 +93,29 @@ function RootLayoutNav() {
   }, []);
 
   return (
-    <DatabaseProvider>
-      <QueryProvider>
-        <ThemeProvider value={AppTheme}>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: Colors.background },
-              headerTintColor: Colors.textPrimary,
-              headerTitleStyle: { fontFamily: Fonts.headingSemiBold },
-              contentStyle: { backgroundColor: Colors.background },
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="result/[id]" options={{ title: '평가 결과' }} />
-            <Stack.Screen name="settings" options={{ title: '설정', presentation: 'modal' }} />
-          </Stack>
-        </ThemeProvider>
-      </QueryProvider>
-    </DatabaseProvider>
+    // React Navigation mounts a provider of its own, but declaring it here makes
+    // the insets available everywhere — including inside the bottom sheets, which
+    // read them to clear the home indicator and the Android navigation bar.
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <DatabaseProvider>
+        <QueryProvider>
+          <ThemeProvider value={AppTheme}>
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: Colors.background },
+                headerTintColor: Colors.textPrimary,
+                headerTitleStyle: { fontFamily: Fonts.headingSemiBold },
+                contentStyle: { backgroundColor: Colors.background },
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="result/[id]" options={{ title: '평가 결과' }} />
+              <Stack.Screen name="settings" options={{ title: '설정', presentation: 'modal' }} />
+            </Stack>
+          </ThemeProvider>
+        </QueryProvider>
+      </DatabaseProvider>
+    </SafeAreaProvider>
   );
 }

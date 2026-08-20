@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Colors } from '@/constants/colors';
@@ -37,6 +38,7 @@ interface GrammarTeacherModalProps {
  * re-opening a kept note costs no API call and works offline.
  */
 export function GrammarTeacherModal({ term, context, onClose }: GrammarTeacherModalProps) {
+  const insets = useSafeAreaInsets();
   const explanation = useGrammarExplanation(term, context);
   const saved = useSavedGrammarNote(term);
   const saveNote = useSaveGrammarNote();
@@ -62,6 +64,9 @@ export function GrammarTeacherModal({ term, context, onClose }: GrammarTeacherMo
       transparent
       animationType="slide"
       statusBarTranslucent
+      // Lets the sheet reach the bottom edge on Android rather than stopping
+      // above the navigation bar; the element below pays the inset back.
+      navigationBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.scrim}>
@@ -115,7 +120,7 @@ export function GrammarTeacherModal({ term, context, onClose }: GrammarTeacherMo
           </ScrollView>
 
           {explanation.data && (
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: Spacing.md + insets.bottom }]}>
               <Button
                 title={isSaved ? '복습에서 빼기' : '복습에 저장'}
                 variant={isSaved ? 'secondary' : 'primary'}
@@ -339,7 +344,7 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.divider,

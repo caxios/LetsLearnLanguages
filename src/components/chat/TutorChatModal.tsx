@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/colors';
 import { FontSizes, Fonts } from '@/constants/fonts';
@@ -46,6 +47,7 @@ export function TutorChatModal({ visible, context, onClose }: TutorChatModalProp
   const chat = useTutorChat(visible ? context : null);
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
 
   const canSend = draft.trim().length > 0 && !chat.isSending;
 
@@ -69,6 +71,9 @@ export function TutorChatModal({ visible, context, onClose }: TutorChatModalProp
       transparent
       animationType="slide"
       statusBarTranslucent
+      // Lets the sheet reach the bottom edge on Android rather than stopping
+      // above the navigation bar; the element below pays the inset back.
+      navigationBarTranslucent
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -163,7 +168,10 @@ export function TutorChatModal({ visible, context, onClose }: TutorChatModalProp
             </View>
           )}
 
-          <View style={styles.composer}>
+          {/* The composer is the bottom-most element, so it owns the inset:
+              without it the field sits under the home indicator or the Android
+              navigation bar. */}
+          <View style={[styles.composer, { paddingBottom: Spacing.md + insets.bottom }]}>
             <TextInput
               accessibilityLabel="질문 입력"
               style={styles.input}
@@ -412,7 +420,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: Spacing.sm,
     padding: Spacing.base,
-    paddingBottom: Spacing.lg,
     borderTopWidth: 1,
     borderTopColor: Colors.divider,
   },

@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { InputMethodToggle } from '@/components/input/InputMethodToggle';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +18,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 
 export default function SettingsScreen() {
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
 
   const preferredInputMethod = useSettingsStore((s) => s.preferredInputMethod);
   const setPreferredInputMethod = useSettingsStore((s) => s.setPreferredInputMethod);
@@ -50,7 +52,10 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingBottom: Spacing['3xl'] + insets.bottom }]}
+    >
       {Features.VOICE_INPUT_ENABLED && (
         <>
           <Text style={styles.sectionTitle}>기본 입력 방식</Text>
